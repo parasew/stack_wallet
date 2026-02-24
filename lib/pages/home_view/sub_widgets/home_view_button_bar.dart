@@ -15,6 +15,7 @@ import '../../../app_config.dart';
 import '../../../providers/providers.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/text_styles.dart';
+import '../../more_view/more_menu_view.dart';
 
 class HomeViewButtonBar extends ConsumerStatefulWidget {
   const HomeViewButtonBar({super.key});
@@ -52,19 +53,21 @@ class _HomeViewButtonBarState extends ConsumerState<HomeViewButtonBar> {
           child: TextButton(
             style: selectedIndex == 0
                 ? Theme.of(context)
-                    .extension<StackColors>()!
-                    .getPrimaryEnabledButtonStyle(context)!
-                    .copyWith(
-                      minimumSize:
-                          MaterialStateProperty.all<Size>(const Size(46, 36)),
-                    )
+                      .extension<StackColors>()!
+                      .getPrimaryEnabledButtonStyle(context)!
+                      .copyWith(
+                        minimumSize: MaterialStateProperty.all<Size>(
+                          const Size(46, 36),
+                        ),
+                      )
                 : Theme.of(context)
-                    .extension<StackColors>()!
-                    .getSecondaryEnabledButtonStyle(context)!
-                    .copyWith(
-                      minimumSize:
-                          MaterialStateProperty.all<Size>(const Size(46, 36)),
-                    ),
+                      .extension<StackColors>()!
+                      .getSecondaryEnabledButtonStyle(context)!
+                      .copyWith(
+                        minimumSize: MaterialStateProperty.all<Size>(
+                          const Size(46, 36),
+                        ),
+                      ),
             onPressed: () {
               FocusScope.of(context).unfocus();
               if (selectedIndex != 0) {
@@ -76,38 +79,37 @@ class _HomeViewButtonBarState extends ConsumerState<HomeViewButtonBar> {
               style: STextStyles.button(context).copyWith(
                 fontSize: 14,
                 color: selectedIndex == 0
-                    ? Theme.of(context)
-                        .extension<StackColors>()!
-                        .buttonTextPrimary
-                    : Theme.of(context)
-                        .extension<StackColors>()!
-                        .buttonTextSecondary,
+                    ? Theme.of(
+                        context,
+                      ).extension<StackColors>()!.buttonTextPrimary
+                    : Theme.of(
+                        context,
+                      ).extension<StackColors>()!.buttonTextSecondary,
               ),
             ),
           ),
         ),
-        if (AppConfig.hasFeature(AppFeature.swap))
-          const SizedBox(
-            width: 8,
-          ),
+        if (AppConfig.hasFeature(AppFeature.swap)) const SizedBox(width: 8),
         if (AppConfig.hasFeature(AppFeature.swap))
           Expanded(
             child: TextButton(
               style: selectedIndex == 1
                   ? Theme.of(context)
-                      .extension<StackColors>()!
-                      .getPrimaryEnabledButtonStyle(context)!
-                      .copyWith(
-                        minimumSize:
-                            MaterialStateProperty.all<Size>(const Size(46, 36)),
-                      )
+                        .extension<StackColors>()!
+                        .getPrimaryEnabledButtonStyle(context)!
+                        .copyWith(
+                          minimumSize: MaterialStateProperty.all<Size>(
+                            const Size(46, 36),
+                          ),
+                        )
                   : Theme.of(context)
-                      .extension<StackColors>()!
-                      .getSecondaryEnabledButtonStyle(context)!
-                      .copyWith(
-                        minimumSize:
-                            MaterialStateProperty.all<Size>(const Size(46, 36)),
-                      ),
+                        .extension<StackColors>()!
+                        .getSecondaryEnabledButtonStyle(context)!
+                        .copyWith(
+                          minimumSize: MaterialStateProperty.all<Size>(
+                            const Size(46, 36),
+                          ),
+                        ),
               onPressed: () async {
                 FocusScope.of(context).unfocus();
                 if (selectedIndex != 1) {
@@ -127,38 +129,37 @@ class _HomeViewButtonBarState extends ConsumerState<HomeViewButtonBar> {
                 style: STextStyles.button(context).copyWith(
                   fontSize: 14,
                   color: selectedIndex == 1
-                      ? Theme.of(context)
-                          .extension<StackColors>()!
-                          .buttonTextPrimary
-                      : Theme.of(context)
-                          .extension<StackColors>()!
-                          .buttonTextSecondary,
+                      ? Theme.of(
+                          context,
+                        ).extension<StackColors>()!.buttonTextPrimary
+                      : Theme.of(
+                          context,
+                        ).extension<StackColors>()!.buttonTextSecondary,
                 ),
               ),
             ),
           ),
-        if (AppConfig.hasFeature(AppFeature.buy))
-          const SizedBox(
-            width: 8,
-          ),
+        if (AppConfig.hasFeature(AppFeature.buy)) const SizedBox(width: 8),
         if (AppConfig.hasFeature(AppFeature.buy))
           Expanded(
             child: TextButton(
               style: selectedIndex == 2
                   ? Theme.of(context)
-                      .extension<StackColors>()!
-                      .getPrimaryEnabledButtonStyle(context)!
-                      .copyWith(
-                        minimumSize:
-                            MaterialStateProperty.all<Size>(const Size(46, 36)),
-                      )
+                        .extension<StackColors>()!
+                        .getPrimaryEnabledButtonStyle(context)!
+                        .copyWith(
+                          minimumSize: MaterialStateProperty.all<Size>(
+                            const Size(46, 36),
+                          ),
+                        )
                   : Theme.of(context)
-                      .extension<StackColors>()!
-                      .getSecondaryEnabledButtonStyle(context)!
-                      .copyWith(
-                        minimumSize:
-                            MaterialStateProperty.all<Size>(const Size(46, 36)),
-                      ),
+                        .extension<StackColors>()!
+                        .getSecondaryEnabledButtonStyle(context)!
+                        .copyWith(
+                          minimumSize: MaterialStateProperty.all<Size>(
+                            const Size(46, 36),
+                          ),
+                        ),
               onPressed: () async {
                 FocusScope.of(context).unfocus();
                 if (selectedIndex != 2) {
@@ -171,12 +172,50 @@ class _HomeViewButtonBarState extends ConsumerState<HomeViewButtonBar> {
                 style: STextStyles.button(context).copyWith(
                   fontSize: 14,
                   color: selectedIndex == 2
-                      ? Theme.of(context)
-                          .extension<StackColors>()!
-                          .buttonTextPrimary
-                      : Theme.of(context)
-                          .extension<StackColors>()!
-                          .buttonTextSecondary,
+                      ? Theme.of(
+                          context,
+                        ).extension<StackColors>()!.buttonTextPrimary
+                      : Theme.of(
+                          context,
+                        ).extension<StackColors>()!.buttonTextSecondary,
+                ),
+              ),
+            ),
+          ),
+        if (ref.watch(
+              prefsChangeNotifierProvider.select((value) => value.familiarity),
+            ) >=
+            6)
+          const SizedBox(width: 8),
+        if (ref.watch(
+              prefsChangeNotifierProvider.select((value) => value.familiarity),
+            ) >=
+            6)
+          SizedBox(
+            width: 46,
+            height: 36,
+            child: TextButton(
+              style: Theme.of(context)
+                  .extension<StackColors>()!
+                  .getSecondaryEnabledButtonStyle(context)!
+                  .copyWith(
+                    minimumSize: MaterialStateProperty.all<Size>(
+                      const Size(46, 36),
+                    ),
+                    padding: MaterialStateProperty.all<EdgeInsets>(
+                      EdgeInsets.zero,
+                    ),
+                  ),
+              onPressed: () {
+                Navigator.of(context).pushNamed(MoreMenuView.routeName);
+              },
+              child: Text(
+                "\u2261",
+                style: STextStyles.button(context).copyWith(
+                  fontSize: 20,
+                  color: Theme.of(
+                    context,
+                  ).extension<StackColors>()!.buttonTextSecondary,
                 ),
               ),
             ),
