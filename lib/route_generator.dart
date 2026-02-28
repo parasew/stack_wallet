@@ -91,6 +91,8 @@ import 'pages/shopinbit/shopinbit_step_2.dart';
 import 'pages/shopinbit/shopinbit_step_3.dart';
 import 'pages/shopinbit/shopinbit_car_fee_view.dart';
 import 'pages/shopinbit/shopinbit_offer_view.dart';
+import 'pages/shopinbit/shopinbit_payment_view.dart';
+import 'pages/shopinbit/shopinbit_send_from_view.dart';
 import 'pages/shopinbit/shopinbit_shipping_view.dart';
 import 'pages/shopinbit/shopinbit_step_4.dart';
 import 'pages/shopinbit/shopinbit_ticket_detail.dart';
@@ -1159,6 +1161,32 @@ class RouteGenerator {
           return getRoute(
             shouldUseMaterialRoute: useMaterialPageRoute,
             builder: (_) => ShopInBitCarFeeView(model: args),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case ShopInBitPaymentView.routeName:
+        if (args is ShopInBitOrderModel) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => ShopInBitPaymentView(model: args),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case ShopInBitSendFromView.routeName:
+        if (args
+            is Tuple4<CryptoCurrency, Amount, String, ShopInBitOrderModel>) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => ShopInBitSendFromView(
+              coin: args.item1,
+              amount: args.item2,
+              address: args.item3,
+              model: args.item4,
+            ),
             settings: RouteSettings(name: settings.name),
           );
         }
