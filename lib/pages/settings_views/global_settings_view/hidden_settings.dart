@@ -17,7 +17,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../db/isar/main_db.dart';
 import '../../../notifications/show_flush_bar.dart';
 import '../../../providers/providers.dart';
-import '../../../services/shopinbit/shopinbit_service.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/assets.dart';
 import '../../../utilities/constants.dart';
@@ -335,92 +334,6 @@ class HiddenSettings extends StatelessWidget {
                             child: RoundedWhiteContainer(
                               child: Text(
                                 "Delete all ShopInBit tickets",
-                                style: STextStyles.button(context).copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).extension<StackColors>()!.accentColorDark,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: () async {
-                              final service = ShopInBitService.instance;
-                              final current = service.customerKey;
-                              if (!context.mounted) return;
-                              final controller = TextEditingController(
-                                text: current ?? "",
-                              );
-                              final result = await showDialog<String>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text("ShopInBit customer key"),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        current != null
-                                            ? "Current: $current"
-                                            : "No key set",
-                                      ),
-                                      const SizedBox(height: 12),
-                                      TextField(
-                                        controller: controller,
-                                        decoration: const InputDecoration(
-                                          hintText: "Enter customer key",
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(ctx).pop(null),
-                                      child: const Text("Cancel"),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.of(ctx).pop("__clear__"),
-                                      child: const Text("Clear"),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.of(
-                                        ctx,
-                                      ).pop(controller.text.trim()),
-                                      child: const Text("Save"),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (result == null || !context.mounted) return;
-                              if (result == "__clear__") {
-                                await service.clearCustomerKey();
-                                if (context.mounted) {
-                                  unawaited(
-                                    showFloatingFlushBar(
-                                      type: FlushBarType.success,
-                                      message: "ShopInBit customer key cleared",
-                                      context: context,
-                                    ),
-                                  );
-                                }
-                              } else if (result.isNotEmpty) {
-                                await service.setCustomerKey(result);
-                                if (context.mounted) {
-                                  unawaited(
-                                    showFloatingFlushBar(
-                                      type: FlushBarType.success,
-                                      message: "ShopInBit customer key set",
-                                      context: context,
-                                    ),
-                                  );
-                                }
-                              }
-                            },
-                            child: RoundedWhiteContainer(
-                              child: Text(
-                                "Set ShopInBit customer key",
                                 style: STextStyles.button(context).copyWith(
                                   color: Theme.of(
                                     context,
