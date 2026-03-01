@@ -29,9 +29,11 @@ class DesktopAuthSend extends ConsumerStatefulWidget {
   const DesktopAuthSend({
     super.key,
     required this.coin,
+    this.tokenTicker,
   });
 
   final CryptoCurrency coin;
+  final String? tokenTicker;
 
   @override
   ConsumerState<DesktopAuthSend> createState() => _DesktopAuthSendState();
@@ -128,7 +130,7 @@ class _DesktopAuthSendState extends ConsumerState<DesktopAuthSend> {
           height: 16,
         ),
         Text(
-          "Enter your wallet password to send ${widget.coin.ticker.toUpperCase()}",
+          "Enter your wallet password to send ${widget.tokenTicker?.toUpperCase() ?? widget.coin.ticker.toUpperCase()}",
           style: STextStyles.desktopTextMedium(context).copyWith(
             color: Theme.of(context).extension<StackColors>()!.textDark3,
           ),
