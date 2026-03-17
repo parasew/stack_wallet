@@ -1,4 +1,4 @@
-#!/nix/store/2hjsch59amjs3nbgh7ahcfzm2bfwl8zi-bash-5.3p9/bin/bash
+#!/usr/bin/env bash
 LINUX_DIRECTORY=$(pwd)
 JSONCPP_TAG=1.7.4
 LIBSECRET_TAG=0.21.4
