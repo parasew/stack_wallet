@@ -12,11 +12,9 @@ source "${SCRIPT_DIR}/../rust_version.sh"
 if [[ "$APP" = "stack_wallet" ]]; then
     set_rust_version_for_libepiccash
     (cd "${ROOT_DIR}/crypto_plugins/flutter_libepiccash/scripts/macos" && ./build_all.sh ) &
-    EPIC_PID=$!
     # Both Epic Cash and MWC use Rust 1.85.1 — no toolchain switch needed
     (cd "${ROOT_DIR}/crypto_plugins/flutter_libmwc/scripts/macos" && ./build_all.sh ) &
-    MWC_PID=$!
-    wait $EPIC_PID $MWC_PID
+    wait
 fi
 
 # Frostdart removed from native build (Cargokit handles it via ffiPlugin:true)

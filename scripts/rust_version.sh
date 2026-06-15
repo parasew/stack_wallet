@@ -18,11 +18,7 @@ set_rust_version_for_libepiccash() {
   fi
 }
 
+# Both libepiccash and libmwc use the same Rust 1.85.1 toolchain
 set_rust_version_for_libmwc() {
-  if rustup toolchain list | grep -q "1.85.1"; then
-    rustup default 1.85.1
-  else
-    echo "Rust version 1.85.1 is not installed. Please install it using 'rustup install 1.85.1'." >&2
-    echo "Bypassed by Nix"
-  fi
+  set_rust_version_for_libepiccash
 }
