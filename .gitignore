@@ -38,8 +38,10 @@ android/app/.cxx
 .direnv/
 .build-home/
 .cargo-home/
+.cargo-target/
 .rustup-home/
 .nix-bin/
+.sccache-cache/
 .tmp/
 .cache/
 

@@ -2,22 +2,22 @@
 
 set -x -e
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
+
 APP="${1:-stack_wallet}"
 
-source ../rust_version.sh
+source "${SCRIPT_DIR}/../rust_version.sh"
 
 if [[ "$APP" = "stack_wallet" ]]; then
     set_rust_version_for_libepiccash
-    (cd ../../crypto_plugins/flutter_libepiccash/scripts/macos && ./build_all.sh )
-    set_rust_version_for_libmwc
-    (cd ../../crypto_plugins/flutter_libmwc/scripts/macos && ./build_all.sh )
+    (cd "${ROOT_DIR}/crypto_plugins/flutter_libepiccash/scripts/macos" && ./build_all.sh ) &
+    EPIC_PID=$!
+    # Both Epic Cash and MWC use Rust 1.85.1 — no toolchain switch needed
+    (cd "${ROOT_DIR}/crypto_plugins/flutter_libmwc/scripts/macos" && ./build_all.sh ) &
+    MWC_PID=$!
+    wait $EPIC_PID $MWC_PID
 fi
 
-set_rust_to_everything_else
-
-if [[ "$APP" = "stack_wallet" || "$APP" = "stack_duo" ]]; then
-    (cd ../../crypto_plugins/frostdart/scripts/macos && ./build_all.sh )
-fi
-
-wait
-echo "Done building"
+# Frostdart removed from native build (Cargokit handles it via ffiPlugin:true)
+echo "Done building native plugins"

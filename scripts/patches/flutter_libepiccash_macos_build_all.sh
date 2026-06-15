@@ -19,11 +19,9 @@ rm -rf build/rust
 cp -r ../../rust build/rust
 cd build/rust
 
-mkdir -p target
 unset MAKEFLAGS MFLAGS CARGO_MAKEFLAGS MAKELEVEL MAKE_TERMOUT MAKE_TERMERR
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
-export CARGO_TARGET_DIR="$(mktemp -d "${TMPDIR:-/tmp}/epiccash-target.XXXXXX")"
-mkdir -p "${CARGO_TARGET_DIR}/aarch64-apple-darwin/release/deps"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$(cd ../../../../.. && pwd)/.cargo-target}"
 
 run_cargo_build() {
   env -u MAKEFLAGS -u MFLAGS -u CARGO_MAKEFLAGS -u MAKELEVEL -u MAKE_TERMOUT -u MAKE_TERMERR \
@@ -31,8 +29,7 @@ run_cargo_build() {
 }
 
 if ! run_cargo_build; then
-  echo "Warning: cargo build failed once; retrying after recreating target dirs..."
-  mkdir -p "${CARGO_TARGET_DIR}/aarch64-apple-darwin/release/deps"
+  echo "Warning: cargo build failed once; retrying..."
   run_cargo_build
 fi
 

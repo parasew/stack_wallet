@@ -20,7 +20,12 @@ PROJECT_CACHE := $(APP_PROJECT_ROOT_DIR)/.cache
 PROJECT_TMP := $(APP_PROJECT_ROOT_DIR)/.tmp
 PROJECT_CARGO_HOME := $(APP_PROJECT_ROOT_DIR)/.cargo-home
 PROJECT_RUSTUP_HOME := $(APP_PROJECT_ROOT_DIR)/.rustup-home
+PROJECT_CARGO_TARGET := $(APP_PROJECT_ROOT_DIR)/.cargo-target
+RUSTC_WRAPPER         ?= $(shell command -v sccache 2>/dev/null || echo "")
+SCCACHE_DIR           ?= $(APP_PROJECT_ROOT_DIR)/.sccache-cache
+SCCACHE_CACHE_SIZE    ?= 10G
 MACOS_FINAL_RUST_TOOLCHAIN ?= stable
+SKIP_NATIVE                  ?= 0
 MACOS_ENV_UNSET = -u LD -u LDFLAGS -u NIX_LDFLAGS -u NIX_CFLAGS_LINK \
 	-u CFLAGS -u CXXFLAGS -u CPPFLAGS \
 	-u SDKROOT -u BINDGEN_EXTRA_CLANG_ARGS \
@@ -30,6 +35,12 @@ MACOS_ENV_SET = MACOSX_DEPLOYMENT_TARGET=11.0
 
 export APP_PROJECT_ROOT_DIR
 export PUB_CACHE
+ifneq ($(RUSTC_WRAPPER),)
+export RUSTC_WRAPPER
+export SCCACHE_DIR
+export SCCACHE_CACHE_SIZE
+endif
+export CARGO_TARGET_DIR ?= $(PROJECT_CARGO_TARGET)
 
 .PHONY: help check-reqs check-reqs-macos check-reqs-windows check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
 	build-linux build-macos build-ios build-android build-windows \
@@ -74,6 +85,7 @@ ifeq ($(shell uname),Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
 endif
+	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled (brew install sccache)"
 	@echo "[OK] All core CLI requirements found!"
 
 check-macos-sdk: ## Verify XCode on macOS
@@ -112,7 +124,7 @@ endif
 
 macos-local-state: ## Create project-local state dirs for reproducible macOS builds
 ifeq ($(shell uname),Darwin)
-	@mkdir -p "$(PROJECT_HOME)" "$(PROJECT_CACHE)" "$(PROJECT_TMP)" "$(PUB_CACHE)" "$(PROJECT_CARGO_HOME)" "$(PROJECT_RUSTUP_HOME)"
+	@mkdir -p "$(PROJECT_HOME)" "$(PROJECT_CACHE)" "$(PROJECT_TMP)" "$(PUB_CACHE)" "$(PROJECT_CARGO_HOME)" "$(PROJECT_RUSTUP_HOME)" "$(PROJECT_CARGO_TARGET)" "$(SCCACHE_DIR)"
 else
 	@true
 endif
@@ -133,6 +145,11 @@ clean: ## Remove artifacts and fix permissions
 	@$(FLUTTER) clean
 	@if [ -f "Cargo.toml" ]; then cargo clean; fi
 	@rm -rf macos/Pods macos/Podfile.lock ios/Pods ios/Podfile.lock build/
+	@echo "Cleaning shared cargo target dir..."
+	@rm -rf $(PROJECT_CARGO_TARGET)
+	@echo "Cleaning sccache..."
+	@sccache --zero-stats 2>/dev/null || true
+	@rm -rf $(SCCACHE_DIR)
 	@echo "Cleaning submodule target folders..."
 	@find crypto_plugins/ -type d \( -name "target" -o -name "build" \) -exec rm -rf {} + 2>/dev/null || true
 	@echo "Cleaning local pub cache residues..."
@@ -163,7 +180,13 @@ patch-submodules: ## Apply portability patches to submodules
 
 # --- PLATFORM BUILDS ---
 
-build-macos: check-reqs-macos check-macos-sdk macos-local-state macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app ## Build MacOS Release (Single source of truth)
+build-macos: check-reqs-macos check-macos-sdk macos-local-state ## Build MacOS Release (Single source of truth)
+ifeq ($(SKIP_NATIVE),1)
+	@echo "=== SKIP_NATIVE=1 — skipping native Rust builds ==="
+	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-app
+else
+	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app
+endif
 
 macos-prepare:
 	@echo "--- Sanitizing environment..."
@@ -263,7 +286,7 @@ macos-restore-metadata:
 
 macos-build-native:
 	@echo "--- Building native dependencies..."
-	@# Ensure local rustup home has a usable default toolchain for native plugin scripts.
+	@# Ensure local rustup home has stable + 1.85.1 toolchains
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup toolchain install --no-self-update stable 1.85.1 >/dev/null
@@ -276,8 +299,6 @@ macos-build-native:
 	@echo "--- Applying local patch for flutter_libmwc macOS build script..."
 	@cp scripts/patches/flutter_libmwc_macos_build_all.sh crypto_plugins/flutter_libmwc/scripts/macos/build_all.sh
 	@chmod +x crypto_plugins/flutter_libmwc/scripts/macos/build_all.sh
-	@# Ensure Frostdart macOS build script uses sed -i.bak form (GNU/BSD compatibility).
-	@perl -0777 -i.bak -pe 's/_run\("sed",\s*\["-i"\s*,\s*"\.bak"\s*,\s*"s\/frostdart\/hrf-api\/",\s*"cargo\.toml"\]\);/_run("sed", ["-i.bak", "s\/frostdart\/hrf-api\/", "cargo.toml"]);/g' crypto_plugins/frostdart/scripts/macos/build_macos.dart 2>/dev/null || true
 	@env $(MACOS_ENV_UNSET) $(MACOS_ENV_SET) \
 		HOME="$(PROJECT_HOME)" \
 		XDG_CACHE_HOME="$(PROJECT_CACHE)" \
@@ -285,6 +306,7 @@ macos-build-native:
 		PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
 		CARGO_HOME="$(PROJECT_CARGO_HOME)" \
+		CARGO_TARGET_DIR="$(PROJECT_CARGO_TARGET)" \
 		CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="/usr/bin/clang" \
 		MAKEFLAGS= \
 		MFLAGS= \
@@ -315,7 +337,7 @@ macos-build-app:
 	@# `flutter create` synthesizes a counter-app widget test that doesn't apply to this app.
 	@rm -f test/widget_test.dart
 	@chmod -R u+w macos/Runner.xcworkspace macos/Runner.xcodeproj 2>/dev/null || true
-	@# Cargokit calls `rustup run stable cargo ...`; ensure local `stable` exists and is selected.
+	@# Cargokit calls `rustup run stable cargo ...`; ensure stable is available
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup toolchain install --no-self-update stable >/dev/null
@@ -339,11 +361,12 @@ macos-build-app:
 		PATH="$(PROJECT_CARGO_HOME)/bin:$$(dirname "$$(rustup which rustc)"):$${PATH}" \
 		ARCHS=arm64 EXCLUDED_ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES $(FLUTTER) build macos --release
 
+
 test-mwc: ## Run MWC FFI integration test on macOS (assumes prior `make build-macos`)
 	@# Flutter's first-launch helper rewrites MACOSX_DEPLOYMENT_TARGET=10.15; reassert 11.0.
 	@sed -i.bak -e "s/MACOSX_DEPLOYMENT_TARGET = 10\\.15;/MACOSX_DEPLOYMENT_TARGET = 11.0;/g" macos/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 	@rm -f macos/Runner.xcodeproj/project.pbxproj.bak
-	@# Cargokit calls `rustup run stable cargo ...`; ensure local `stable` exists and is selected.
+	@# Cargokit calls `rustup run stable cargo ...`; ensure stable is installed
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup toolchain install --no-self-update stable >/dev/null

@@ -4,8 +4,8 @@ set_rust_to_everything_else() {
   if rustup toolchain list | grep -q "stable"; then
     rustup default stable
   else
-    echo "Rust stable toolchain is not installed. Please install it using 'rustup toolchain install stable'." >&2
-    echo "Bypassed by Nix"
+    echo "Rust stable toolchain is not installed..."
+    echo "Bypassed by Nix"  # Was previously "exit 1", patched by Makefile
   fi
 }
 
