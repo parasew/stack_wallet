@@ -108,11 +108,11 @@ echo "Results appended: $OUTFILE"
 # Show all runs
 echo ""
 echo "=== All results for $HOST ==="
-printf "%-20s %-18s %-12s %-8s %-8s %5s %7s %-15s %5s\n" LABEL OS ARCH BRANCH WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
-printf '%s\n' '---------------------------------------------------------------------------------------------------'
+printf "%-20s %-8s %-12s %-8s %-14s %5s %-8s %7s %-15s %5s\n" LABEL COMMIT ARCH BRANCH OS WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
+printf '%s\n' '----------------------------------------------------------------------------------------------------------------'
 tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host arch os_name os_ver date warm flags wall_sec success disk_total disk_delta; do
   delta_mb=$((disk_delta / 1024))
   [ "$success" = "1" ] && status="✓" || status="✗"
   os="${os_name} ${os_ver}"
-  printf "%-20s %-18s %-12s %-8s %-5s %-8s %7s %-15s %5s\n" "$label" "${os:0:17}" "$arch" "${branch:0:12}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
+  printf "%-20s %-8s %-12s %-8s %-14s %-5s %-8s %7s %-15s %5s\n" "$label" "${commit:0:7}" "$arch" "${branch:0:12}" "${os:0:14}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
 done

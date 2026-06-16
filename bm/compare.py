@@ -23,12 +23,13 @@ def load_results(results_dir):
             with open(fpath) as f:
                 reader = csv.DictReader(f)
                 for r in reader:
-                    if r.get("success","0") == "1":
-                        r["_file"] = fpath.name
+                    if r.get("success","0") in ("1", "True"):
                         rows.append(r)
         except Exception as e:
             print(f"  skip {fpath.name}: {e}", file=sys.stderr)
     return rows
+
+
 
 def wall_fmt(s):
     """Format seconds to human readable."""
@@ -71,7 +72,7 @@ def render(rows, fmt="terminal"):
     for r in rows:
         by_host[r.get("host","unknown")].append(r)
 
-    hdr = ["Mode", "OS", "Arch", "Branch", "Warm", "Flags", "Wall Time", "Disk Δ"]
+    hdr = ["Mode", "Commit", "Arch", "Branch", "OS", "Warm", "Flags", "Wall Time", "Disk Δ"]
 
     for host, host_rows in sorted(by_host.items()):
         if fmt == "markdown":
@@ -96,15 +97,16 @@ def render(rows, fmt="terminal"):
 
         for r in host_rows:
             label    = hr_label(r.get("label",""))
-            os_str   = f"{r.get('os_name','')} {r.get('os_ver','')}"[:17]
+            commit   = r.get("commit","")[:7]
             arch     = r.get("arch","")
             branch   = r.get("branch","")[:12]
+            os_str   = f"{r.get('os_name','')} {r.get('os_ver','')}"[:14]
             warm     = "yes" if r.get("warm","0") == "1" else "no"
             flags    = r.get("flags","-").replace("SCCACHE=1,","").replace("SCCACHE=0,","") or "-"
             wall     = wall_fmt(r.get("wall_sec",""))
             disk     = f"{mb(r.get('disk_delta_kb',''))}MB"
 
-            cols = [label, os_str, arch, branch, warm, flags, wall, disk]
+            cols = [label, commit, arch, branch, os_str, warm, flags, wall, disk]
 
             if fmt == "markdown":
                 print(f"| {' | '.join(cols)} |")
