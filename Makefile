@@ -66,18 +66,22 @@ check-reqs: ## Verify essential build tools
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v meson >/dev/null 2>&1 || { \
-		if [ "PLATFORM" = "Darwin" ]; then \
+		if [ "$(PLATFORM)" = "Darwin" ]; then \
 			echo >&2 "[ERROR] Meson not installed. On macOS, run 'make bootstrap-macos' or 'brew install meson'."; \
+		elif [ "$(PLATFORM)" = "Linux" ]; then \
+			echo >&2 "[ERROR] Meson not installed. On Linux/NixOS, run in 'nix develop' or install meson via your package manager."; \
 		else \
-			echo >&2 "[ERROR] Meson not installed. On NixOS, run in 'nix develop' or install meson permanently."; \
+			echo >&2 "[ERROR] Meson not installed. Install via your package manager."; \
 		fi; \
 		exit 1; \
 	}
 	@command -v ninja >/dev/null 2>&1 || { \
-		if [ "PLATFORM" = "Darwin" ]; then \
+		if [ "$(PLATFORM)" = "Darwin" ]; then \
 			echo >&2 "[ERROR] Ninja not installed. On macOS, run 'make bootstrap-macos' or 'brew install ninja'."; \
+		elif [ "$(PLATFORM)" = "Linux" ]; then \
+			echo >&2 "[ERROR] Ninja not installed. On Linux/NixOS, run in 'nix develop' or install ninja via your package manager."; \
 		else \
-			echo >&2 "[ERROR] Ninja not installed. On NixOS, run in 'nix develop' or install ninja permanently."; \
+			echo >&2 "[ERROR] Ninja not installed. Install via your package manager."; \
 		fi; \
 		exit 1; \
 	}
@@ -132,7 +136,7 @@ endif
 
 check-reqs-windows: ## Verify Windows/WSL requirements
 	@echo "Checking Windows prerequisites..."
-	@command -v wsl >/dev/null 2>&1 || { echo >&2 "[ERROR] WSL is not installed."; exit 1; }
+	@command -v wsl >/dev/null 2>&1 || command -v wsl.exe >/dev/null 2>&1 || { echo >&2 "[ERROR] WSL not found. Run this inside WSL2 or install WSL from https://aka.ms/wsl."; exit 1; }
 	@echo "[OK] Windows/WSL requirements found!"
 
 # --- MAINTENANCE ---

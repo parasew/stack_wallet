@@ -21,9 +21,11 @@ brew install --cask flutter
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Initializing Rust toolchain..."
   rustup-init -y
+  echo "rustup installed. Add to your shell profile if not already:"
+  echo '  export PATH="$HOME/.cargo/bin:$PATH"'
 fi
 
-# Ensure cargo/rustc are in PATH after rustup-init
+# Ensure cargo/rustc are in PATH for this session
 if [[ -f "$HOME/.cargo/env" ]]; then
   source "$HOME/.cargo/env"
 fi
