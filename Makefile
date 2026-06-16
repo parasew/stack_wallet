@@ -83,7 +83,7 @@ ifeq ($(shell uname),Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
 endif
-	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled (brew install sccache)"
+	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled (install with your package manager)"
 	@echo "[OK] All core CLI requirements found!"
 
 check-macos-sdk: ## Verify XCode on macOS
