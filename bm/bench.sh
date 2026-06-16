@@ -7,9 +7,8 @@
 #   bash bm/bench.sh --warm             # warm rebuild (no clean)
 #   bash bm/bench.sh SCCACHE=0          # cold, without sccache
 #   bash bm/bench.sh SKIP_NATIVE=1      # cold, Dart only
-#   bash bm/bench.sh --warm SCCACHE=0   # warm, without sccache
 #
-# Output: bm/results/<hostname>.csv
+# Output: bm/results/<hostname>.csv  (one file per machine, all runs appended)
 # ==============================================================================
 set -euo pipefail
 
@@ -27,7 +26,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --warm) WARM=1; shift ;;
     --label) LABEL="$2"; shift 2 ;;
-    *) MAKE_FLAGS="$MAKE_FLAGS $1"; shift ;;
+    *) MAKE_FLAGS="${MAKE_FLAGS:+${MAKE_FLAGS} }$1"; shift ;;
   esac
 done
 
@@ -38,18 +37,18 @@ case "$(uname -s)" in
   *)       echo "Unknown platform: $(uname -s)"; exit 1 ;;
 esac
 
+# Git info
+COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
+
 # Auto-generate label
 if [ -z "$LABEL" ]; then
-  if [ $WARM -eq 1 ]; then
-    LABEL="warm"
-  else
-    LABEL="cold"
-  fi
+  LABEL=$([ $WARM -eq 1 ] && echo "warm" || echo "cold")
 fi
-
-# Detect sccache state from flags
 if echo "$MAKE_FLAGS" | grep -q "SCCACHE=0"; then
   LABEL="${LABEL}-no-sccache"
+elif echo "$MAKE_FLAGS" | grep -q "SCCACHE=1"; then
+  LABEL="${LABEL}-sccache"
 fi
 if echo "$MAKE_FLAGS" | grep -q "SKIP_NATIVE=1"; then
   LABEL="${LABEL}-skip-native"
@@ -57,8 +56,8 @@ fi
 
 DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "=== Benchmark: ${LABEL} ==="
-echo "Host: $HOST  |  Date: $(date)  |  Target: ${BUILD_TARGET}"
-echo "Flags:${MAKE_FLAGS:- (none)}"
+echo "Host: $HOST  |  Branch: $BRANCH  |  Commit: $COMMIT"
+echo "Target: ${BUILD_TARGET}  |  Flags: ${MAKE_FLAGS:-(none)}"
 echo ""
 
 # Disk before
@@ -71,7 +70,7 @@ if [ $WARM -eq 0 ]; then
 fi
 
 # Build
-echo "--- Building (make ${BUILD_TARGET}${MAKE_FLAGS}) ---"
+echo "--- Building (make ${BUILD_TARGET} ${MAKE_FLAGS}) ---"
 START=$(date +%s)
 make ${BUILD_TARGET} ${MAKE_FLAGS} 2>&1 | tail -5
 RC=$?
@@ -84,20 +83,27 @@ DISK_DELTA=$((DISK_AFTER - DISK_BEFORE))
 
 # Write CSV header if new file
 if [ ! -f "$OUTFILE" ]; then
-  echo "label,host,platform,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb" > "$OUTFILE"
+  echo "label,branch,commit,host,platform,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb" > "$OUTFILE"
 fi
 
-echo "${LABEL},${HOST},$(uname -s),${DATE},${WARM},${MAKE_FLAGS## },${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}" >> "$OUTFILE"
+echo "${LABEL},${BRANCH},${COMMIT},${HOST},$(uname -s),${DATE},${WARM},${MAKE_FLAGS:--},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}" >> "$OUTFILE"
 
 echo ""
 if [ $RC -eq 0 ]; then
-  echo "✓ Build succeeded in ${WALL}s ($((WALL/60))m $((WALL%60))s)"
+  MIN=$((WALL/60)); SEC=$((WALL%60))
+  echo "✓ Build succeeded in ${WALL}s (${MIN}m ${SEC}s)"
 else
   echo "✗ Build FAILED after ${WALL}s"
 fi
 echo "Results appended: $OUTFILE"
 
-# Show last 3 runs
+# Show all runs
 echo ""
 echo "=== All results for $HOST ==="
-column -t -s, "$OUTFILE" 2>/dev/null || cat "$OUTFILE"
+printf "%-20s %-25s %-7s %-10s %-8s %5s %7s %-15s %5s\n" LABEL BRANCH COMMIT DATE WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
+printf '%s\n' '----------------------------------------------------------------------------------------'
+tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host platform date warm flags wall_sec success disk_total disk_delta; do
+  delta_mb=$((disk_delta / 1024))
+  [ "$success" = "1" ] && status="✓" || status="✗"
+  printf "%-20s %-25s %-7s %-10s %-5s %-8s %7s %-15s %5s\n" "$label" "$branch" "$commit" "${date:0:10}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
+done
