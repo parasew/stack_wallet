@@ -23,8 +23,8 @@ if ! command -v rustup >/dev/null 2>&1; then
   rustup-init -y
 fi
 
+# Ensure cargo/rustc are in PATH after rustup-init
 if [[ -f "$HOME/.cargo/env" ]]; then
-  # shellcheck disable=SC1090
   source "$HOME/.cargo/env"
 fi
 
