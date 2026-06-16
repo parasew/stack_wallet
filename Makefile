@@ -13,6 +13,9 @@ DART_BIN     := $(if $(and $(DART),$(wildcard $(DART))),$(DART),$(shell command 
 FLUTTER      := $(FLUTTER_BIN)
 DART         := $(DART_BIN)
 APP_PROJECT_ROOT_DIR := $(CURDIR)
+# Platform detection: auto-detect from uname, or set PLATFORM=windows manually.
+# On Windows native (cmd.exe), set: make PLATFORM=windows build-windows
+PLATFORM       ?= $(shell uname -s 2>/dev/null || echo Windows)
 PUB_CACHE    ?= $(APP_PROJECT_ROOT_DIR)/.pub-cache
 PROTOC_PATH  := $(shell which protoc 2>/dev/null)
 PROJECT_HOME := $(APP_PROJECT_ROOT_DIR)/.build-home
@@ -63,7 +66,7 @@ check-reqs: ## Verify essential build tools
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v meson >/dev/null 2>&1 || { \
-		if [ "$(shell uname)" = "Darwin" ]; then \
+		if [ "PLATFORM" = "Darwin" ]; then \
 			echo >&2 "[ERROR] Meson not installed. On macOS, run 'make bootstrap-macos' or 'brew install meson'."; \
 		else \
 			echo >&2 "[ERROR] Meson not installed. On NixOS, run in 'nix develop' or install meson permanently."; \
@@ -71,7 +74,7 @@ check-reqs: ## Verify essential build tools
 		exit 1; \
 	}
 	@command -v ninja >/dev/null 2>&1 || { \
-		if [ "$(shell uname)" = "Darwin" ]; then \
+		if [ "PLATFORM" = "Darwin" ]; then \
 			echo >&2 "[ERROR] Ninja not installed. On macOS, run 'make bootstrap-macos' or 'brew install ninja'."; \
 		else \
 			echo >&2 "[ERROR] Ninja not installed. On NixOS, run in 'nix develop' or install ninja permanently."; \
@@ -79,7 +82,7 @@ check-reqs: ## Verify essential build tools
 		exit 1; \
 	}
 	@command -v pkg-config >/dev/null 2>&1 || { echo >&2 "[ERROR] pkg-config not installed."; exit 1; }
-ifeq ($(shell uname),Darwin)
+ifeq (PLATFORM,Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
 endif
@@ -87,7 +90,7 @@ endif
 	@echo "[OK] All core CLI requirements found!"
 
 check-macos-sdk: ## Verify XCode on macOS
-ifeq ($(shell uname),Darwin)
+ifeq (PLATFORM,Darwin)
 	@echo "Checking macOS SDK requirements..."
 	@xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1 || ( \
 		echo "[ERROR] macOS SDK not available. Install Xcode or run: sudo xcode-select --switch /Applications/Xcode.app"; \
@@ -96,7 +99,7 @@ ifeq ($(shell uname),Darwin)
 endif
 
 check-reqs-macos: check-reqs ## Verify macOS-specific tools are available in PATH
-ifeq ($(shell uname),Darwin)
+ifeq (PLATFORM,Darwin)
 	@echo "Checking macOS-specific tools in PATH..."
 	@command -v pod >/dev/null 2>&1 || { echo >&2 "[ERROR] CocoaPods (pod) not installed."; exit 1; }
 	@command -v xcodebuild >/dev/null 2>&1 || { echo >&2 "[ERROR] xcodebuild not available."; exit 1; }
@@ -107,7 +110,7 @@ else
 endif
 
 bootstrap-macos: ## Install required macOS build tools via Homebrew helper script
-ifeq ($(shell uname),Darwin)
+ifeq (PLATFORM,Darwin)
 	@if [ -n "$$IN_NIX_SHELL" ] || [ -n "$$NIX_BUILD_TOP" ]; then \
 		echo "[WARN] Nix environment detected; bootstrap-macos skipped (use nix/flake-provided toolchain)."; \
 		exit 0; \
@@ -121,7 +124,7 @@ else
 endif
 
 macos-local-state: ## Create project-local state dirs for reproducible macOS builds
-ifeq ($(shell uname),Darwin)
+ifeq (PLATFORM,Darwin)
 	@mkdir -p "$(PROJECT_HOME)" "$(PROJECT_CACHE)" "$(PROJECT_TMP)" "$(PUB_CACHE)" "$(PROJECT_CARGO_HOME)" "$(PROJECT_RUSTUP_HOME)" "$(PROJECT_CARGO_TARGET)" "$(SCCACHE_DIR)"
 else
 	@true
