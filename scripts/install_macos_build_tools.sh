@@ -12,6 +12,18 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Checking Xcode..."
+if ! xcode-select -p >/dev/null 2>&1; then
+  echo "Xcode not found. Download from https://developer.apple.com/xcode/ or the App Store."
+  echo "After installing, run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+  exit 1
+fi
+if [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
+  echo "Wrong Xcode path selected. Fixing..."
+  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+fi
+sudo xcodebuild -license accept 2>/dev/null || true
+
 echo "Installing Homebrew packages..."
 brew install direnv rustup-init cmake meson ninja pkg-config gnu-sed cocoapods go protobuf autoconf automake libtool
 
