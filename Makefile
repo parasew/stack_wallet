@@ -21,7 +21,8 @@ PROJECT_TMP := $(APP_PROJECT_ROOT_DIR)/.tmp
 PROJECT_CARGO_HOME := $(APP_PROJECT_ROOT_DIR)/.cargo-home
 PROJECT_RUSTUP_HOME := $(APP_PROJECT_ROOT_DIR)/.rustup-home
 PROJECT_CARGO_TARGET := $(APP_PROJECT_ROOT_DIR)/.cargo-target
-RUSTC_WRAPPER         ?= $(shell command -v sccache 2>/dev/null || echo "")
+SCCACHE                      ?= 1
+RUSTC_WRAPPER         ?= $(if $(filter 1,$(SCCACHE)),$(shell command -v sccache 2>/dev/null || echo ""),"")
 SCCACHE_DIR           ?= $(APP_PROJECT_ROOT_DIR)/.sccache-cache
 SCCACHE_CACHE_SIZE    ?= 10G
 SKIP_NATIVE                  ?= 0
@@ -82,7 +83,7 @@ ifeq ($(shell uname),Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
 endif
-	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled (install with your package manager)"
+	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled"
 	@echo "[OK] All core CLI requirements found!"
 
 check-macos-sdk: ## Verify XCode on macOS
