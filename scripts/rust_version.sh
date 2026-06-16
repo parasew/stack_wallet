@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 set_rust_to_everything_else() {
-  if rustup toolchain list | grep -q "stable"; then
-    rustup default stable
+  if rustup toolchain list | grep -q "1.85.1"; then
+    rustup default 1.85.1
   else
-    echo "Rust stable toolchain is not installed..."
-    echo "Bypassed by Nix"  # Was previously "exit 1", patched by Makefile
+    echo "Rust 1.85.1 toolchain is not installed..."
+    echo "Bypassed by Nix"
   fi
 }
 

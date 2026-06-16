@@ -59,7 +59,6 @@ check-reqs: ## Verify essential build tools
 	@command -v rustup >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup not installed."; exit 1; }
 	@rustup which rustc >/dev/null 2>&1 || { echo >&2 "[ERROR] rustc toolchain not available via rustup."; exit 1; }
 	@rustup which cargo >/dev/null 2>&1 || { echo >&2 "[ERROR] cargo toolchain not available via rustup."; exit 1; }
-	@rustup run stable rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup stable toolchain not available."; exit 1; }
 	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.85.1 toolchain not available."; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
@@ -114,7 +113,7 @@ ifeq ($(shell uname),Darwin)
 		exit 0; \
 	fi
 	@bash scripts/install_macos_build_tools.sh
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain stable >/dev/null 2>&1 || true
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
 	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
 else
 	@echo "[ERROR] bootstrap-macos is macOS-only."
@@ -282,13 +281,17 @@ macos-restore-metadata:
 
 macos-build-native:
 	@echo "--- Building native dependencies..."
-	@# Ensure local rustup home has stable + 1.85.1 toolchains
+	@# Single Rust 1.85.1 toolchain with stable symlink for Cargokit compatibility
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update stable 1.85.1 >/dev/null
+		rustup toolchain install --no-self-update 1.85.1 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default stable >/dev/null
+		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
+			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
+		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
+		rustup default 1.85.1 >/dev/null
 	@echo "--- Applying local patch for flutter_libepiccash macOS build script..."
 	@cp scripts/patches/flutter_libepiccash_macos_build_all.sh crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
 	@chmod +x crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
@@ -333,16 +336,22 @@ macos-build-app:
 	@# `flutter create` synthesizes a counter-app widget test that doesn't apply to this app.
 	@rm -f test/widget_test.dart
 	@chmod -R u+w macos/Runner.xcworkspace macos/Runner.xcodeproj 2>/dev/null || true
-	@# Cargokit calls `rustup run stable cargo ...`; ensure stable is available
+	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.85.1 is aliased as stable
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update stable >/dev/null
+		rustup toolchain install --no-self-update 1.85.1 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default stable >/dev/null
+		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
+			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
+		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
+		rustup default 1.85.1 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup run stable rustc -V
+	@# Patch xelis-common to use split_at_mut (compatible with Rust 1.85.1)
+	@env CARGO_HOME="$(PROJECT_CARGO_HOME)" bash scripts/patches/xelis_1_85_1_compat.sh
 	@echo "--- Cleaning stale Spark Mobile framework from local pub cache..."
 	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
 	@env $(MACOS_ENV_UNSET) $(MACOS_ENV_SET) \
@@ -361,13 +370,17 @@ test-mwc: ## Run MWC FFI integration test on macOS (assumes prior `make build-ma
 	@# Flutter's first-launch helper rewrites MACOSX_DEPLOYMENT_TARGET=10.15; reassert 11.0.
 	@sed -i.bak -e "s/MACOSX_DEPLOYMENT_TARGET = 10\\.15;/MACOSX_DEPLOYMENT_TARGET = 11.0;/g" macos/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 	@rm -f macos/Runner.xcodeproj/project.pbxproj.bak
-	@# Cargokit calls `rustup run stable cargo ...`; ensure stable is installed
+	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.85.1 is aliased as stable
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update stable >/dev/null
+		rustup toolchain install --no-self-update 1.85.1 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default stable >/dev/null
+		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
+			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
+		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
+		rustup default 1.85.1 >/dev/null
 	@# `flutter test` re-runs pod install which re-prepares flutter_libsparkmobile; remove stale framework so the prepare step can write.
 	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
 	@chmod -R u+w macos/Runner.xcodeproj macos 2>/dev/null || true
