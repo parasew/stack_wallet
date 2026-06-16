@@ -14,9 +14,16 @@ if ! command -v brew >/dev/null 2>&1; then
   elif [[ -x /usr/local/bin/brew ]]; then
     eval "$(/usr/local/bin/brew shellenv)"
   else
-    echo "Homebrew is required. Install it first: https://brew.sh"
-    echo 'After installing, run: eval "$(/opt/homebrew/bin/brew shellenv)"'
-    exit 1
+    echo "Homebrew not found. Installing..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+      eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -x /usr/local/bin/brew ]]; then
+      eval "$(/usr/local/bin/brew shellenv)"
+    else
+      echo "Homebrew installation failed. Install manually: https://brew.sh"
+      exit 1
+    fi
   fi
 fi
 
@@ -44,23 +51,19 @@ fi
 sudo xcodebuild -license accept 2>/dev/null || true
 
 echo "Installing Homebrew packages..."
-brew install direnv rustup-init cmake meson ninja pkg-config gnu-sed cocoapods go protobuf autoconf automake libtool
+brew install direnv rustup cmake meson ninja pkg-config gnu-sed cocoapods go protobuf autoconf automake libtool
 
 echo "Installing Flutter cask..."
 brew install --cask flutter
 
 if ! command -v rustup >/dev/null 2>&1; then
-  echo "Initializing Rust toolchain..."
-  if command -v rustup-init >/dev/null 2>&1; then
-    rustup-init -y
-  else
-    echo "rustup-init not found. Try: brew install rustup"
-    exit 1
-  fi
-  # rustup-init adds cargo/rustc to PATH via ~/.cargo/env
-  if [[ -f "$HOME/.cargo/env" ]]; then
-    source "$HOME/.cargo/env"
-  fi
+  echo "rustup not found in PATH. Check brew install."
+  exit 1
+fi
+
+# cargo/rustc live in ~/.cargo/bin after rustup toolchain install
+if [[ -f "$HOME/.cargo/env" ]]; then
+  source "$HOME/.cargo/env"
 fi
 
 echo "Ensuring Rust 1.85.1 single toolchain..."
