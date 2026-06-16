@@ -7,9 +7,28 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
+# Homebrew may not be in PATH after a fresh install
 if ! command -v brew >/dev/null 2>&1; then
-  echo "Homebrew is required. Install it first: https://brew.sh"
-  exit 1
+  if [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  elif [[ -x /usr/local/bin/brew ]]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+  else
+    echo "Homebrew is required. Install it first: https://brew.sh"
+    echo 'After installing, run: eval "$(/opt/homebrew/bin/brew shellenv)"'
+    exit 1
+  fi
+fi
+
+# rustup is keg-only in Homebrew (conflicts with rust), manually add to PATH
+RUSTUP_BIN="/opt/homebrew/opt/rustup/bin"
+if [[ -d "$RUSTUP_BIN" ]] && [[ ":$PATH:" != *":$RUSTUP_BIN:"* ]]; then
+  export PATH="$RUSTUP_BIN:$PATH"
+fi
+
+# cargo/rustc live in ~/.cargo/bin after rustup-init
+if [[ -f "$HOME/.cargo/env" ]]; then
+  source "$HOME/.cargo/env"
 fi
 
 echo "Checking Xcode..."
@@ -32,14 +51,16 @@ brew install --cask flutter
 
 if ! command -v rustup >/dev/null 2>&1; then
   echo "Initializing Rust toolchain..."
-  rustup-init -y
-  echo "rustup installed. Add to your shell profile if not already:"
-  echo '  export PATH="$HOME/.cargo/bin:$PATH"'
-fi
-
-# Ensure cargo/rustc are in PATH for this session
-if [[ -f "$HOME/.cargo/env" ]]; then
-  source "$HOME/.cargo/env"
+  if command -v rustup-init >/dev/null 2>&1; then
+    rustup-init -y
+  else
+    echo "rustup-init not found. Try: brew install rustup"
+    exit 1
+  fi
+  # rustup-init adds cargo/rustc to PATH via ~/.cargo/env
+  if [[ -f "$HOME/.cargo/env" ]]; then
+    source "$HOME/.cargo/env"
+  fi
 fi
 
 echo "Ensuring Rust 1.85.1 single toolchain..."
@@ -71,4 +92,9 @@ go version
 autoreconf --version | head -n 1 || true
 aclocal --version | head -n 1 || true
 
-echo "Done."
+echo ""
+echo "Done. To make these tools permanent, add to ~/.zshrc:"
+echo ""
+echo '  eval "$(/opt/homebrew/bin/brew shellenv)"'
+echo '  export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"'
+echo '  export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"    # for gsed'
