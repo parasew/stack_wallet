@@ -65,19 +65,19 @@
             export PATH="$HOME/.cargo/bin:$PATH"
             
             # ==========================================
-            # RUST TOOLCHAIN AUTOMATION
-            # ==========================================
-            if ! rustup toolchain list | grep -q "stable" || ! rustup toolchain list | grep -q "1.85.1"; then
-              echo "Initializing Rust toolchains (this happens only once)..."
-              rustup toolchain install --no-self-update stable 1.85.1
-            fi
+             # RUST TOOLCHAIN AUTOMATION
+             # Single Rust 1.85.1 toolchain for all crates (Epic, MWC, FROST, xelis)
+             # ==========================================
+             if ! rustup toolchain list | grep -q "1.85.1"; then
+               echo "Initializing Rust toolchain (this happens only once)..."
+               rustup toolchain install --no-self-update 1.85.1
+             fi
 
-            rustup default stable
-            
-            if [[ "${system}" == *"darwin"* ]]; then
-              rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain stable
-              rustup target add aarch64-apple-darwin --toolchain 1.85.1
-            fi
+             rustup default 1.85.1
+             
+             if [[ "${system}" == *"darwin"* ]]; then
+               rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.85.1
+             fi
 
             if ! command -v cbindgen >/dev/null 2>&1 || ! command -v cargo-lipo >/dev/null 2>&1; then
               echo "Installing required Cargo tools..."
