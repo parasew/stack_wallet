@@ -15,7 +15,7 @@ make build-macos     # on macOS
 make build-linux     # on Linux
 ```
 
-The Makefile is the single entry point for all builds. Two Rust toolchains are provisioned by the flake: `stable` (default, used for frostdart / coinlib / secp256k1 / etc.) and `1.85.1` (pinned for `flutter_libepiccash` and `flutter_libmwc`). The bootstrap scripts `scripts/install_macos_build_tools.sh` and `scripts/install_nixos_build_tools.sh` install equivalent host toolchains for non-Nix setups.
+The Makefile is the single entry point for all builds. A single Rust `1.85.1` toolchain is provisioned by the flake for all crates (Epic Cash, MWC, FROST, xelis, coinlib, secp256k1). The bootstrap scripts `scripts/install_macos_build_tools.sh` and `scripts/install_nixos_build_tools.sh` install the same toolchain for non-Nix setups.
 
 The legacy per-platform instructions below remain valid for developers who do not want to use Nix.
 
@@ -68,8 +68,8 @@ Install [Rust](https://www.rust-lang.org/tools/install) via [rustup.rs](https://
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc
-rustup toolchain install stable 1.85.1
-rustup default stable
+rustup toolchain install 1.85.1
+rustup default 1.85.1
 cargo install cargo-ndk
 ```
 
@@ -223,12 +223,12 @@ brew install brotli cairo coreutils gdbm gettext glib gmp libevent libidn2 libng
 ```
 <!-- TODO: determine which of the above list are not needed at all. -->
 
-Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install the `stable` toolchain and the `1.85.1` toolchain (pinned for libepiccash/libmwc), as well as `cbindgen` and `cargo-lipo`.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
+Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install the `1.85.1` toolchain (all crates compile on 1.85.1), as well as `cbindgen` and `cargo-lipo`.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc 
-rustup toolchain install stable 1.85.1
-rustup default stable
+rustup toolchain install 1.85.1
+rustup default 1.85.1
 cargo install cargo-ndk
 cargo install cbindgen cargo-lipo
 rustup target add aarch64-apple-ios aarch64-apple-darwin
@@ -324,11 +324,10 @@ Install Flutter 3.38.5 on your Windows host (not in WSL2) by [following their gu
 ### Rust
 Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host (not in WSL2).  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions:
 ```
-rustup toolchain install stable 1.85.1
-rustup default stable
+rustup toolchain install 1.85.1
+rustup default 1.85.1
 cargo install cargo-ndk
 ```
-Note: the frostdart Windows build scripts additionally require Rust `1.71.0-x86_64-pc-windows-msvc` (and the `gnu` variant for cross-compiles). Install with `rustup toolchain install 1.71.0-x86_64-pc-windows-msvc` if you build on or for Windows.
 
 ### Windows SDK and Developer Mode
 Install the Windows SDK: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/  You may need to install the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/), which can be installed [by Visual Studio](https://stackoverflow.com/a/73923899) (`Tools > Get Tools and Features... > Modify > Individual Components > Windows 10 SDK`).

@@ -28,13 +28,10 @@ if [[ -f "$HOME/.cargo/env" ]]; then
   source "$HOME/.cargo/env"
 fi
 
-echo "Ensuring Rust toolchains are installed..."
-rustup toolchain install stable
-rustup default stable
+echo "Ensuring Rust 1.85.1 single toolchain..."
 rustup toolchain install 1.85.1
-rustup default stable
-rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain stable >/dev/null 2>&1 || true
-rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
+rustup default 1.85.1
+rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain 1.85.1 >/dev/null 2>&1 || true
 
 echo "Installing Rust CLI build tools..."
 cargo install cargo-lipo cbindgen || true
@@ -54,7 +51,7 @@ fi
 
 rustup --version
 rustc --version
-rustup run stable rustc --version
+rustup run 1.85.1 rustc --version
 pod --version
 go version
 autoreconf --version | head -n 1 || true
