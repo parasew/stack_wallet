@@ -23,6 +23,13 @@ echo "Host: $HOST"
 echo "Date: $(date)"
 echo ""
 
+# Detect platform
+case "$(uname -s)" in
+  Darwin)  BUILD_TARGET="build-macos"; REQS_TARGET="check-reqs-macos" ;;
+  Linux)   BUILD_TARGET="build-linux"; REQS_TARGET="check-reqs" ;;
+  *)       echo "Unknown platform: $(uname -s)"; exit 1 ;;
+esac
+
 # Flags to pass to make
 MAKE_FLAGS="${*:-}"
 if [ -n "$MAKE_FLAGS" ]; then
@@ -40,9 +47,9 @@ echo "--- Cleaning ---"
 make clean 2>&1 | tail -1
 
 # Time the build
-echo "--- Building (make build-macos ${MAKE_FLAGS}) ---"
+echo "--- Building (make ${BUILD_TARGET} ${MAKE_FLAGS}) ---"
 START=$(date +%s)
-make build-macos ${MAKE_FLAGS} 2>&1 | tail -5
+make ${BUILD_TARGET} ${MAKE_FLAGS} 2>&1 | tail -5
 RC=${PIPESTATUS[0]}
 END=$(date +%s)
 WALL=$((END - START))
@@ -60,9 +67,9 @@ else
   echo "✗ Build FAILED after ${WALL}s"
 fi
 
-# Write CSV
-echo "label,host,date,flags,wall_sec,success,disk_total_kb,disk_delta_kb,disk_build_kb" > "$OUTFILE"
-echo "${LABEL},${HOST},${DATE},${MAKE_FLAGS},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA},${DISK_BUILD}" >> "$OUTFILE"
+# Output header
+echo "label,host,platform,date,flags,wall_sec,success,disk_total_kb,disk_delta_kb,disk_build_kb" > "$OUTFILE"
+echo "${LABEL},${HOST},$(uname -s),${DATE},${MAKE_FLAGS},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA},${DISK_BUILD}" >> "$OUTFILE"
 
 echo ""
 echo "Results: $OUTFILE"
