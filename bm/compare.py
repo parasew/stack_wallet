@@ -1,84 +1,174 @@
 #!/usr/bin/env python3
-"""Compare benchmark results across machines and modes."""
-import csv, sys, os
+"""
+compare.py — Render benchmark results from bm/results/<host>.csv files.
+
+Usage:
+  python3 bm/compare.py bm/results/              # terminal report
+  python3 bm/compare.py bm/results/ > report.md   # markdown for bm/render.sh
+"""
+
+import csv, sys, os, json
 from collections import defaultdict
 from pathlib import Path
+from statistics import mean, stdev, median
+
+PIPE = "│"
 
 def load_results(results_dir):
     rows = []
-    for fpath in Path(results_dir).glob("*.csv"):
+    for fpath in sorted(Path(results_dir).glob("*.csv")):
+        if fpath.name.startswith("sizes_"):
+            continue
         try:
             with open(fpath) as f:
                 reader = csv.DictReader(f)
-                rows.extend(list(reader))
+                for r in reader:
+                    if r.get("success","0") == "1":
+                        r["_file"] = fpath.name
+                        rows.append(r)
         except Exception as e:
             print(f"  skip {fpath.name}: {e}", file=sys.stderr)
     return rows
 
-def fmt_sec(s):
+def wall_fmt(s):
+    """Format seconds to human readable."""
     try:
         s = int(float(s))
-        return f"{s//60}m{s%60:02d}s"
-    except: return s
+        m, sec = divmod(s, 60)
+        if m >= 60:
+            h, m = divmod(m, 60)
+            return f"{h}h{m:02d}m{sec:02d}s"
+        return f"{m}m{sec:02d}s"
+    except:
+        return str(s)
 
-def fmt_mb(kb):
-    try: return f"{int(float(kb))//1024}MB"
-    except: return kb
+def wall_s(s):
+    """Parse string to int seconds."""
+    try: return int(float(s))
+    except: return 0
 
-def compare(dir1, dir2=None, fmt="markdown"):
-    rows1 = load_results(dir1)
-    rows2 = load_results(dir2) if dir2 else []
+def mb(kb_str):
+    try: return int(float(kb_str)) // 1024
+    except: return 0
 
-    all_rows = rows1 + rows2
-    if not all_rows:
-        print("No benchmark results found.")
+def hr_label(label):
+    """Human readable label."""
+    l = label.lower()
+    if l == "cold": return "Cold build"
+    if l == "warm": return "Warm rebuild"
+    if l == "cold-no-sccache": return "Cold (no sccache)"
+    if l == "cold-sccache": return "Cold (cache)"
+    if "skip-native" in l: return "Dart only"
+    return label
+
+def render(rows, fmt="terminal"):
+    if not rows:
+        print("No successful benchmark results found.", file=sys.stderr)
         return
 
-    # Group by origin dir
-    by_dir = defaultdict(list)
-    for r in rows1: by_dir[os.path.basename(dir1)].append(r)
-    for r in rows2: by_dir[os.path.basename(dir2)].append(r) if dir2 else None
+    # Group by host then label
+    by_host = defaultdict(list)
+    for r in rows:
+        by_host[r.get("host","unknown")].append(r)
 
-    # Collect unique labels and hosts
-    labels = sorted(set(r.get("label","") for r in all_rows))
-    hosts = sorted(set(r.get("host","") for r in all_rows))
+    hdr = ["Mode", "Branch", "Commit", "Warm", "Flags", "Wall Time", "Disk Δ"]
 
-    if fmt == "markdown":
-        print("# Build Benchmark Comparison\n")
-        for host in hosts:
-            print(f"## {host}\n")
-            host_rows = [r for r in all_rows if r.get("host") == host]
-            print("| Label | Branch | Warm | Flags | Wall Time | Disk Δ |")
-            print("|-------|--------|------|-------|-----------|--------|")
-            for r in sorted(host_rows, key=lambda x: x.get("label","")):
-                branch = r.get("branch","")[:20]
-                wall = fmt_sec(r.get("wall_sec",""))
-                disk = fmt_mb(r.get("disk_delta_kb",""))
-                warm = "yes" if r.get("warm","0") == "1" else "no"
-                flags = r.get("flags","-") or "-"
-                print(f"| {r['label']} | {branch} | {warm} | {flags} | {wall} | {disk} |")
-            print()
+    for host, host_rows in sorted(by_host.items()):
+        if fmt == "markdown":
+            print(f"\n## {host}\n")
+        else:
+            print(f"\n{'═'*80}")
+            print(f"  {host}")
+            print(f"{'═'*80}")
 
-    if dir2:
-        print("## Comparison\n")
-        print("| Metric | Before | After | Delta |")
-        print("|--------|--------|-------|-------|")
+        # Sort: cold first, then by label
+        host_rows.sort(key=lambda r: (r.get("warm","0"), r.get("label","")))
+
+        if fmt == "markdown":
+            print(f"| {' | '.join(hdr)} |")
+            print(f"|{'|'.join(['---']*len(hdr))}|")
+        else:
+            # Terminal table with rich/box drawing
+            widths = [max(len(h), 18) for h in hdr]
+            # Print header
+            print(PIPE + PIPE.join(h.center(w) for h,w in zip(hdr,widths)) + PIPE)
+            print(PIPE + PIPE.join("─"*w for w in widths) + PIPE)
+
+        for r in host_rows:
+            label    = hr_label(r.get("label",""))
+            branch   = r.get("branch","")[:18]
+            commit   = r.get("commit","")[:8]
+            warm     = "yes" if r.get("warm","0") == "1" else "no"
+            flags    = r.get("flags","-").replace("SCCACHE=1,","").replace("SCCACHE=0,","") or "-"
+            wall     = wall_fmt(r.get("wall_sec",""))
+            disk     = f"{mb(r.get('disk_delta_kb',''))}MB"
+
+            cols = [label, branch, commit, warm, flags, wall, disk]
+
+            if fmt == "markdown":
+                print(f"| {' | '.join(cols)} |")
+            else:
+                print(PIPE + PIPE.join(c.center(w) for c,w in zip(cols,widths)) + PIPE)
+
+    # Comparison summary
+    labels = sorted(set(r["label"] for r in rows))
+    if len(labels) > 1:
+        print(f"\n{'═'*80}")
+        print(f"  Summary")
+        print(f"{'═'*80}")
         for label in labels:
-            d1 = [r for r in rows1 if r.get("label") == label]
-            d2 = [r for r in rows2 if r.get("label") == label]
-            if d1 and d2:
-                w1 = int(float(d1[0]["wall_sec"]))
-                w2 = int(float(d2[0]["wall_sec"]))
-                delta = w2 - w1
-                sign = "+" if delta > 0 else ""
-                pct = (delta/w1)*100 if w1 else 0
-                print(f"| {label} (wall time) | {fmt_sec(w1)} | {fmt_sec(w2)} | {sign}{fmt_sec(abs(delta))} ({pct:+.0f}%) |")
+            lbl_rows = [r for r in rows if r["label"] == label]
+            times = [wall_s(r["wall_sec"]) for r in lbl_rows]
+            disks = [mb(r["disk_delta_kb"]) for r in lbl_rows]
+            if len(times) >= 1:
+                avg = mean(times)
+                print(f"  {hr_label(label):25s}  {wall_fmt(avg):>10s}  (n={len(times)})")
+
+    # Embed chart references for markdown output
+    if fmt == "markdown":
+        print("\n---")
+        print("\n## Charts\n")
+        charts_dir = "bm/results"
+        print(f"![Build Time]({charts_dir}/chart_build_time.svg)")
+        print(f"![Disk Usage]({charts_dir}/chart_disk_usage.svg)")
+
+def compare(dir1, dir2=None):
+    """Compare two result directories."""
+    rows1 = load_results(dir1)
+    rows2 = load_results(dir2) if dir2 else []
+    all_rows = rows1 + rows2
+
+    if not all_rows:
+        print("No benchmark results found.", file=sys.stderr)
+        return
+
+    # Mark format based on output
+    is_pipe = not sys.stdout.isatty()
+    fmt = "markdown" if is_pipe else "terminal"
+
+    render(all_rows, fmt)
+
+    if dir2 and rows1 and rows2:
+        print(f"\n{'═'*80}")
+        print(f"  Delta: {os.path.basename(dir1)} → {os.path.basename(dir2)}")
+        print(f"{'═'*80}")
+        labels1 = {r["label"] for r in rows1}
+        labels2 = {r["label"] for r in rows2}
+        for label in sorted(labels1 & labels2):
+            t1 = wall_s(rows1[0]["wall_sec"])
+            t2 = wall_s(rows2[0]["wall_sec"])
+            delta = t2 - t1
+            pct = (delta/t1)*100 if t1 else 0
+            sign = "+" if delta > 0 else ""
+            print(f"  {hr_label(label):25s}  {wall_fmt(t1)} → {wall_fmt(t2)}  ({sign}{pct:.0f}%)")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <results_dir> [compare_dir]")
-        print(f"  {sys.argv[0]} bm/results/           # single dir report")
-        print(f"  {sys.argv[0]} old_results/ new_results/   # compare two dirs")
+        print(f"Usage: {sys.argv[0]} <results_dir> [compare_dir]", file=sys.stderr)
+        print(f"  {sys.argv[0]} bm/results/              # single report", file=sys.stderr)
+        print(f"  {sys.argv[0]} old/ new/                # compare two dirs", file=sys.stderr)
+        print(f"  {sys.argv[0]} bm/results/ > report.md  # markdown for PDF", file=sys.stderr)
         sys.exit(1)
 
     compare(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else None)
