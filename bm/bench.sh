@@ -34,6 +34,11 @@ done
 case "$(uname -s)" in
   Darwin)  BUILD_TARGET="build-macos" ;;
   Linux)   BUILD_TARGET="build-linux" ;;
+  MINGW*|MSYS*|CYGWIN*)
+    echo "Git Bash on Windows detected. Benchmarking requires WSL2:"
+    echo "  wsl bash bm/bench.sh"
+    exit 1
+    ;;
   *)       echo "Unknown platform: $(uname -s)"; exit 1 ;;
 esac
 
