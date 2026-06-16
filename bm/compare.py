@@ -71,7 +71,7 @@ def render(rows, fmt="terminal"):
     for r in rows:
         by_host[r.get("host","unknown")].append(r)
 
-    hdr = ["Mode", "Branch", "Commit", "Warm", "Flags", "Wall Time", "Disk Δ"]
+    hdr = ["Mode", "OS", "Arch", "Branch", "Warm", "Flags", "Wall Time", "Disk Δ"]
 
     for host, host_rows in sorted(by_host.items()):
         if fmt == "markdown":
@@ -96,14 +96,15 @@ def render(rows, fmt="terminal"):
 
         for r in host_rows:
             label    = hr_label(r.get("label",""))
-            branch   = r.get("branch","")[:18]
-            commit   = r.get("commit","")[:8]
+            os_str   = f"{r.get('os_name','')} {r.get('os_ver','')}"[:17]
+            arch     = r.get("arch","")
+            branch   = r.get("branch","")[:12]
             warm     = "yes" if r.get("warm","0") == "1" else "no"
             flags    = r.get("flags","-").replace("SCCACHE=1,","").replace("SCCACHE=0,","") or "-"
             wall     = wall_fmt(r.get("wall_sec",""))
             disk     = f"{mb(r.get('disk_delta_kb',''))}MB"
 
-            cols = [label, branch, commit, warm, flags, wall, disk]
+            cols = [label, os_str, arch, branch, warm, flags, wall, disk]
 
             if fmt == "markdown":
                 print(f"| {' | '.join(cols)} |")
@@ -116,6 +117,9 @@ def render(rows, fmt="terminal"):
         print(f"\n{'═'*80}")
         print(f"  Summary")
         print(f"{'═'*80}")
+        machines = sorted(set(f"{r.get('host','')} ({r.get('arch','')} {r.get('os_name','')} {r.get('os_ver','')})" for r in rows))
+        for m in machines:
+            print(f"  Machine: {m}")
         for label in labels:
             lbl_rows = [r for r in rows if r["label"] == label]
             times = [wall_s(r["wall_sec"]) for r in lbl_rows]

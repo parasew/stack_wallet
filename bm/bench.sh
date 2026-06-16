@@ -60,8 +60,11 @@ if echo "$MAKE_FLAGS" | grep -q "SKIP_NATIVE=1"; then
 fi
 
 DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+ARCH="$(uname -m)"
+OS_NAME="$(uname -s)"
+OS_VER="$(uname -r)"
 echo "=== Benchmark: ${LABEL} ==="
-echo "Host: $HOST  |  Branch: $BRANCH  |  Commit: $COMMIT"
+echo "Host: $HOST  |  OS: $OS_NAME $OS_VER ($ARCH)  |  Branch: $BRANCH  |  Commit: $COMMIT"
 echo "Target: ${BUILD_TARGET}  |  Flags: ${MAKE_FLAGS:-(none)}"
 echo ""
 
@@ -88,10 +91,10 @@ DISK_DELTA=$((DISK_AFTER - DISK_BEFORE))
 
 # Write CSV header if new file
 if [ ! -f "$OUTFILE" ]; then
-  echo "label,branch,commit,host,platform,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb" > "$OUTFILE"
+  echo "label,branch,commit,host,arch,os_name,os_ver,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb" > "$OUTFILE"
 fi
 
-echo "${LABEL},${BRANCH},${COMMIT},${HOST},$(uname -s),${DATE},${WARM},${MAKE_FLAGS:--},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}" >> "$OUTFILE"
+echo "${LABEL},${BRANCH},${COMMIT},${HOST},${ARCH},${OS_NAME},${OS_VER},${DATE},${WARM},${MAKE_FLAGS:--},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}" >> "$OUTFILE"
 
 echo ""
 if [ $RC -eq 0 ]; then
@@ -105,10 +108,11 @@ echo "Results appended: $OUTFILE"
 # Show all runs
 echo ""
 echo "=== All results for $HOST ==="
-printf "%-20s %-25s %-7s %-10s %-8s %5s %7s %-15s %5s\n" LABEL BRANCH COMMIT DATE WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
-printf '%s\n' '----------------------------------------------------------------------------------------'
-tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host platform date warm flags wall_sec success disk_total disk_delta; do
+printf "%-20s %-18s %-12s %-8s %-8s %5s %7s %-15s %5s\n" LABEL OS ARCH BRANCH WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
+printf '%s\n' '---------------------------------------------------------------------------------------------------'
+tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host arch os_name os_ver date warm flags wall_sec success disk_total disk_delta; do
   delta_mb=$((disk_delta / 1024))
   [ "$success" = "1" ] && status="✓" || status="✗"
-  printf "%-20s %-25s %-7s %-10s %-5s %-8s %7s %-15s %5s\n" "$label" "$branch" "$commit" "${date:0:10}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
+  os="${os_name} ${os_ver}"
+  printf "%-20s %-18s %-12s %-8s %-5s %-8s %7s %-15s %5s\n" "$label" "${os:0:17}" "$arch" "${branch:0:12}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
 done
