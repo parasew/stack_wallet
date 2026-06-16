@@ -39,7 +39,6 @@ export RUSTC_WRAPPER
 export SCCACHE_DIR
 export SCCACHE_CACHE_SIZE
 endif
-export CARGO_TARGET_DIR ?= $(PROJECT_CARGO_TARGET)
 
 .PHONY: help check-reqs check-reqs-macos check-reqs-windows check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
 	build-linux build-macos build-ios build-android build-windows \
