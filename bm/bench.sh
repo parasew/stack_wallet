@@ -46,17 +46,17 @@ esac
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 
-# Auto-generate label
+# Auto-generate label only if not explicitly set
 if [ -z "$LABEL" ]; then
   LABEL=$([ $WARM -eq 1 ] && echo "warm" || echo "cold")
-fi
-if echo "$MAKE_FLAGS" | grep -q "SCCACHE=0"; then
-  LABEL="${LABEL}-no-sccache"
-elif echo "$MAKE_FLAGS" | grep -q "SCCACHE=1"; then
-  LABEL="${LABEL}-sccache"
-fi
-if echo "$MAKE_FLAGS" | grep -q "SKIP_NATIVE=1"; then
-  LABEL="${LABEL}-skip-native"
+  if echo "$MAKE_FLAGS" | grep -q "SCCACHE=0"; then
+    LABEL="${LABEL}-no-sccache"
+  elif echo "$MAKE_FLAGS" | grep -q "SCCACHE=1"; then
+    LABEL="${LABEL}-sccache"
+  fi
+  if echo "$MAKE_FLAGS" | grep -q "SKIP_NATIVE=1"; then
+    LABEL="${LABEL}-skip-native"
+  fi
 fi
 
 DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
