@@ -210,7 +210,7 @@ macos-configure:
 		echo >&2 "[ERROR] Xcode not found. Download from https://developer.apple.com/xcode/"; \
 		exit 1; \
 	fi
-	@sudo xcodebuild -runFirstLaunch 2>/dev/null || true
+	@xcodebuild -runFirstLaunch 2>/dev/null || true
 	@echo "--- Initializing submodules..."
 	@git submodule update --init --recursive
 	@echo "--- Bootstrapping local config files..."
