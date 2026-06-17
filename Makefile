@@ -204,6 +204,12 @@ macos-prepare:
 
 macos-configure:
 	@echo "--- Configuring project..."
+	@# Ensure Xcode is installed and fully initialized
+	@if ! xcode-select -p >/dev/null 2>&1; then \
+		echo >&2 "[ERROR] Xcode not found. Download from https://developer.apple.com/xcode/"; \
+		exit 1; \
+	fi
+	@sudo xcodebuild -runFirstLaunch 2>/dev/null || true
 	@echo "--- Initializing submodules..."
 	@git submodule update --init --recursive
 	@echo "--- Bootstrapping local config files..."

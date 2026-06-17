@@ -49,6 +49,7 @@ if [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 fi
 sudo xcodebuild -license accept 2>/dev/null || true
+sudo xcodebuild -runFirstLaunch 2>/dev/null || true
 
 echo "Installing Homebrew packages..."
 brew install direnv rustup cmake meson ninja pkg-config gnu-sed cocoapods go protobuf autoconf automake libtool
