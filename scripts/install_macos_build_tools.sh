@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+# Safe to run directly (./script.sh) or source (source script.sh)
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  set -euo pipefail                          # strict when executed directly
+else
+  set -uo pipefail                            # no -e when sourced (don't kill parent shell)
+fi
+die() { echo "$@" >&2; return 1 2>/dev/null || exit 1; }
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "This installer is for macOS only."
-  exit 1
+  die "This installer is for macOS only."
 fi
 
 # Homebrew may not be in PATH after a fresh install
@@ -21,8 +26,7 @@ if ! command -v brew >/dev/null 2>&1; then
     elif [[ -x /usr/local/bin/brew ]]; then
       eval "$(/usr/local/bin/brew shellenv)"
     else
-      echo "Homebrew installation failed. Install manually: https://brew.sh"
-      exit 1
+      die "Homebrew installation failed. Install manually: https://brew.sh"
     fi
   fi
 fi
@@ -67,8 +71,7 @@ echo "Installing Flutter cask..."
 brew install --cask flutter
 
 if ! command -v rustup >/dev/null 2>&1; then
-  echo "rustup not found in PATH. Check brew install."
-  exit 1
+  die "rustup not found in PATH. Check brew install."
 fi
 
 echo "Ensuring Rust 1.85.1 single toolchain..."
