@@ -63,7 +63,7 @@ DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ARCH="$(uname -m)"
 OS_NAME="$(uname -s)"
 OS_VER="$(uname -r)"
-echo "Benchmark: ${LABEL}" | toilet -f term -F border
+echo "Benchmark: ${LABEL}" | toilet -f term --metal   
 echo "Host: $HOST"
 echo "OS: $OS_NAME $OS_VER ($ARCH)"
 echo "Branch: $BRANCH"
@@ -77,12 +77,12 @@ DISK_BEFORE=$(du -sk . 2>/dev/null | cut -f1)
 
 # Clean unless warm
 if [ $WARM -eq 0 ]; then
-  echo "--- Cleaning ---"
+  echo "Cleaning" | toilet -f term --metal  
   make clean 2>&1 | tail -1
 fi
 
 # Build
-echo "--- Building: make ${BUILD_TARGET} ${MAKE_FLAGS} ---"
+echo "Building: make ${BUILD_TARGET} ${MAKE_FLAGS} " | toilet -f term --metal  
 START=$(date +%s)
 make ${BUILD_TARGET} ${MAKE_FLAGS} 2>&1 | tail -5
 RC=$?
@@ -107,7 +107,7 @@ if [ $RC -eq 0 ]; then
 else
   echo "✗ Build FAILED after ${WALL}s"
 fi
-echo "Results appended: $OUTFILE"
+echo "Results appended: $OUTFILE" | toilet -f term --metal  
 
 # Show all runs
 echo ""
