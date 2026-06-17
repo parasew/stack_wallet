@@ -368,6 +368,12 @@ macos-build-app:
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup run stable rustc -V
+	@# Pre-fetch xelis git deps so the checkout exists before the patch runs
+	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
+		if [ -n "$$XELIS_MANIFEST" ]; then \
+			env HOME="$(PROJECT_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
+				cargo fetch --manifest-path "$$XELIS_MANIFEST" 2>/dev/null || true; \
+		fi
 	@# Patch xelis-common to use split_at_mut (compatible with Rust 1.85.1)
 	@env CARGO_HOME="$(PROJECT_CARGO_HOME)" bash scripts/patches/xelis_1_85_1_compat.sh
 	@echo "--- Cleaning stale Spark Mobile framework from local pub cache..."
