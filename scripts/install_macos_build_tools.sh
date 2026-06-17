@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 
-# Safe to run directly (./script.sh) or source (source script.sh)
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  set -euo pipefail                          # strict when executed directly
+# Safe to source (source script.sh) or execute directly (./script.sh)
+if [ -n "${ZSH_VERSION:-}" ]; then
+  if [[ "${ZSH_EVAL_CONTEXT:-}" == *file* ]]; then
+    set -uo pipefail                           # sourced in zsh, don't -e
+  else
+    set -euo pipefail                          # executed in zsh
+  fi
+elif [ -n "${BASH_VERSION:-}" ]; then
+  if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    set -uo pipefail                           # sourced in bash, don't -e
+  else
+    set -euo pipefail                          # executed in bash
+  fi
 else
-  set -uo pipefail                            # no -e when sourced (don't kill parent shell)
+  set -euo pipefail                            # unknown shell
 fi
 die() { echo "$@" >&2; return 1 2>/dev/null || exit 1; }
 
