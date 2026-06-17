@@ -111,12 +111,14 @@ echo "Results appended: $OUTFILE" | toilet -f term --metal
 
 # Show all runs
 echo ""
-echo "=== All results for $HOST ==="
-printf "%-20s %-8s %-12s %-8s %-14s %5s %-8s %7s %-15s %5s\n" LABEL COMMIT ARCH BRANCH OS WARM FLAGS WALL_SEC SUCCESS DISK_DELTA_MB
-printf '%s\n' '----------------------------------------------------------------------------------------------------------------'
+echo "=== All results for $HOST ($ARCH $OS_NAME $OS_VER) ==="
+printf "%-22s %-10s %-8s %-4s %10s %8s\n" MODE COMMIT FLAGS WARM WALL DISK
+printf '%s\n' '──────────────────────────────────────────────────────────────────'
 tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host arch os_name os_ver date warm flags wall_sec success disk_total disk_delta; do
   delta_mb=$((disk_delta / 1024))
-  [ "$success" = "1" ] && status="✓" || status="✗"
-  os="${os_name} ${os_ver}"
-  printf "%-20s %-8s %-12s %-8s %-14s %-5s %-8s %7s %-15s %5s\n" "$label" "${commit:0:7}" "$arch" "${branch:0:12}" "${os:0:14}" "$warm" "${flags:--}" "${wall_sec}s" "$status" "${delta_mb}M"
+  w=$((wall_sec)); m=$((w/60)); s=$((w%60))
+  time_fmt="${m}m${s}s"
+  warm_label=$([ "$warm" = "1" ] && echo "yes" || echo "no")
+  [ "$success" = "1" ] && ok="✓" || ok="✗"
+  printf "%-22s %-10s %-8s %-4s %10s %8s\n" "$label" "${commit:0:7}" "${flags:--}" "$warm_label" "$time_fmt" "$ok ${delta_mb}MB"
 done
