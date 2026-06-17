@@ -57,8 +57,12 @@ def hr_label(label):
     l = label.lower()
     if l == "cold": return "Cold build"
     if l == "warm": return "Warm rebuild"
-    if l == "cold-no-sccache": return "Cold (no sccache)"
-    if l == "cold-sccache": return "Cold (cache)"
+    if l == "cold-nosccache": return "Cold (no sccache)"
+    if l == "cold-sccache": return "Cold (sccache)"
+    if l == "cold-dart-only": return "Cold (Dart only)"
+    if l == "warm-nosccache": return "Warm (no sccache)"
+    if l == "warm-sccache": return "Warm (sccache)"
+    if l == "warm-dart-only": return "Warm (Dart only)"
     if "skip-native" in l: return "Dart only"
     return label
 
