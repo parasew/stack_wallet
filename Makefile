@@ -146,6 +146,7 @@ init: ## Initialize all submodules
 
 clean: ## Remove artifacts and fix permissions
 	@echo "Cleaning Flutter and Rust artifacts..."
+	@chflags -R nouchg crypto_plugins/ build/ macos/ 2>/dev/null || true
 	@chmod -R u+w crypto_plugins/ build/ macos/ 2>/dev/null || true
 	@if [ -f pubspec.yaml ]; then $(FLUTTER) clean; fi
 	@if [ -f "Cargo.toml" ]; then cargo clean; fi
