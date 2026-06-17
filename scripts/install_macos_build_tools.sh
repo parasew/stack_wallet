@@ -49,7 +49,7 @@ fi
 
 echo "Checking Xcode..."
 
-# Install xcodes CLI for automated Xcode installation
+# Install xcodes CLI for automated Xcode installation (only used if Xcode.app isn't on disk)
 ensure_xcodes() {
   if command -v xcodes >/dev/null 2>&1; then return 0; fi
   echo "Installing xcodes CLI for automated Xcode setup..."
@@ -61,12 +61,21 @@ ensure_xcodes() {
   rm -f /tmp/xcodes.zip
 }
 
-if ! xcode-select -p >/dev/null 2>&1; then
-  echo "Xcode not found. Installing via xcodes..."
+if ls /Applications/Xcode*.app >/dev/null 2>&1; then
+  # Xcode.app already on disk — just fix xcode-select if needed
+  XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)"
+  if ! xcode-select -p >/dev/null 2>&1 || [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
+    echo "Xcode.app found at $XCODE_APP. Setting xcode-select path..."
+    sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+  else
+    echo "Xcode.app already configured."
+  fi
+elif xcode-select -p >/dev/null 2>&1; then
+  echo "Command Line Tools found but Xcode.app is required for macOS builds. Installing Xcode..."
   ensure_xcodes
   xcodes install --latest --select
-elif [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
-  echo "Command Line Tools installed instead of Xcode. Installing Xcode via xcodes..."
+else
+  echo "No developer tools found. Installing Xcode..."
   ensure_xcodes
   xcodes install --latest --select
 fi
