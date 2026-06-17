@@ -13,42 +13,39 @@
 set -euo pipefail
 
 HOST="$(hostname -s 2>/dev/null || echo unknown)"
-echo "════════════════════════════════════════════════════"
-echo "  Stack Wallet — Full Benchmark Suite"
-echo "  Host: $HOST  |  $(date)"
-echo "════════════════════════════════════════════════════"
+figlet "Stack Wallet"
+
+echo "  Full Benchmark Suite"
+echo "  Host: $HOST  "
+echo "  $(date)"
 echo ""
 
-# A ━━━ Cold without sccache ━━━
-echo "━━━ A: Cold build (no sccache) ━━━"
+echo "Cold build (no sccache)" | toilet -f term -F border --gay
 make clean 2>/dev/null || true
 bash bm/bench.sh --label cold-nosccache SCCACHE=0
 echo ""
 
-# B ━━━ Warm after cold no-sccache (CARGO_TARGET_DIR only) ━━━
+echo "Warm after cold no-sccache (CARGO_TARGET_DIR only)" | toilet -f term -F border --gay
 echo "━━━ B: Warm rebuild (no sccache, CARGO_TARGET_DIR cache hit) ━━━"
 bash bm/bench.sh --warm --label warm-nosccache SCCACHE=0
 echo ""
 
-# C ━━━ Cold with sccache ━━━
-echo "━━━ C: Cold build (with sccache) ━━━"
+echo "Cold with sccache" | toilet -f term -F border --gay
 make clean 2>/dev/null || true
 bash bm/bench.sh --label cold-sccache SCCACHE=1
 echo ""
 
-# D ━━━ Warm after cold sccache (sccache + target dir) ━━━
+echo "Warm after cold sccache (sccache + target dir)" | toilet -f term -F border --gay
 echo "━━━ D: Warm rebuild (sccache + CARGO_TARGET_DIR cache hit) ━━━"
 bash bm/bench.sh --warm --label warm-sccache SCCACHE=1
 echo ""
 
-# E ━━━ Cold Dart-only ━━━
-echo "━━━ E: Cold build (Dart only, SKIP_NATIVE=1) ━━━"
+echo "Cold build (Dart only, SKIP_NATIVE=1)" | toilet -f term -F border --gay
 make clean 2>/dev/null || true
 bash bm/bench.sh --label cold-dart-only SKIP_NATIVE=1
 echo ""
 
-# F ━━━ Warm Dart-only ━━━
-echo "━━━ F: Warm rebuild (Dart only) ━━━"
+echo "Warm Dart-only" | toilet -f term -F border --gay
 bash bm/bench.sh --warm --label warm-dart-only SKIP_NATIVE=1
 echo ""
 
