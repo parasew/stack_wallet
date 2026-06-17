@@ -33,11 +33,6 @@ if [[ -d "$RUSTUP_BIN" ]] && [[ ":$PATH:" != *":$RUSTUP_BIN:"* ]]; then
   export PATH="$RUSTUP_BIN:$PATH"
 fi
 
-# cargo/rustc live in ~/.cargo/bin after rustup-init
-if [[ -f "$HOME/.cargo/env" ]]; then
-  source "$HOME/.cargo/env"
-fi
-
 echo "Checking Xcode..."
 
 # Install xcodes CLI for automated Xcode installation
@@ -76,15 +71,14 @@ if ! command -v rustup >/dev/null 2>&1; then
   exit 1
 fi
 
-# cargo/rustc live in ~/.cargo/bin after rustup toolchain install
-if [[ -f "$HOME/.cargo/env" ]]; then
-  source "$HOME/.cargo/env"
-fi
-
 echo "Ensuring Rust 1.85.1 single toolchain..."
 rustup toolchain install 1.85.1
 rustup default 1.85.1
 rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain 1.85.1 >/dev/null 2>&1 || true
+
+# cargo/rustc live in ~/.cargo/bin after rustup installs a toolchain
+export PATH="$HOME/.cargo/bin:$PATH"
+source "$HOME/.cargo/env" 2>/dev/null || true
 
 echo "Installing Rust CLI build tools..."
 cargo install cargo-lipo cbindgen || true
