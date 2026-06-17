@@ -113,7 +113,7 @@ if [ -f "$HOME/.zshrc" ]; then
     echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zshrc"
   grep -qF '$HOME/.cargo/bin' "$HOME/.zshrc" 2>/dev/null || \
     echo 'export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.zshrc"
-  echo "→ PATH entries added to ~/.zshrc (open a new terminal or run 'source ~/.zshrc')"
+  echo "→ PATH added to ~/.zshrc for future terminals"
 else
   echo "→ Add these to your shell profile for permanent PATH setup:"
   echo '  eval "$(/opt/homebrew/bin/brew shellenv)"'
