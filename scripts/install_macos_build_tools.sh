@@ -105,8 +105,17 @@ autoreconf --version | head -n 1 || true
 aclocal --version | head -n 1 || true
 
 echo ""
-echo "Done. To make these tools permanent, add to ~/.zshrc:"
-echo ""
-echo '  eval "$(/opt/homebrew/bin/brew shellenv)"'
-echo '  export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"'
-echo '  export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"    # for gsed'
+echo "Done."
+
+# Add PATH entries to ~/.zshrc if not already present
+if [ -f "$HOME/.zshrc" ]; then
+  grep -qF 'brew shellenv' "$HOME/.zshrc" 2>/dev/null || \
+    echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$HOME/.zshrc"
+  grep -qF '$HOME/.cargo/bin' "$HOME/.zshrc" 2>/dev/null || \
+    echo 'export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"' >> "$HOME/.zshrc"
+  echo "→ PATH entries added to ~/.zshrc (open a new terminal or run 'source ~/.zshrc')"
+else
+  echo "→ Add these to your shell profile for permanent PATH setup:"
+  echo '  eval "$(/opt/homebrew/bin/brew shellenv)"'
+  echo '  export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"'
+fi
