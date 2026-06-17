@@ -63,9 +63,13 @@ DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ARCH="$(uname -m)"
 OS_NAME="$(uname -s)"
 OS_VER="$(uname -r)"
-echo "=== Benchmark: ${LABEL} ==="
-echo "Host: $HOST  |  OS: $OS_NAME $OS_VER ($ARCH)  |  Branch: $BRANCH  |  Commit: $COMMIT"
-echo "Target: ${BUILD_TARGET}  |  Flags: ${MAKE_FLAGS:-(none)}"
+echo "Benchmark: ${LABEL}" | toilet -f term -F border
+echo "Host: $HOST"
+echo "OS: $OS_NAME $OS_VER ($ARCH)"
+echo "Branch: $BRANCH"
+echo "Commit: $COMMIT"
+echo "Target: ${BUILD_TARGET}"
+echo "Flags: ${MAKE_FLAGS:-(none)}"
 echo ""
 
 # Disk before
@@ -78,7 +82,7 @@ if [ $WARM -eq 0 ]; then
 fi
 
 # Build
-echo "--- Building (make ${BUILD_TARGET} ${MAKE_FLAGS}) ---"
+echo "--- Building: make ${BUILD_TARGET} ${MAKE_FLAGS} ---"
 START=$(date +%s)
 make ${BUILD_TARGET} ${MAKE_FLAGS} 2>&1 | tail -5
 RC=$?
@@ -99,7 +103,7 @@ echo "${LABEL},${BRANCH},${COMMIT},${HOST},${ARCH},${OS_NAME},${OS_VER},${DATE},
 echo ""
 if [ $RC -eq 0 ]; then
   MIN=$((WALL/60)); SEC=$((WALL%60))
-  echo "✓ Build succeeded in ${WALL}s (${MIN}m ${SEC}s)"
+  echo "✓ Build succeeded in ${WALL}s \(${MIN}m ${SEC}s\)"
 else
   echo "✗ Build FAILED after ${WALL}s"
 fi
