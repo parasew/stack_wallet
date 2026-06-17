@@ -53,7 +53,7 @@ echo "Checking Xcode..."
 ensure_xcodes() {
   if command -v xcodes >/dev/null 2>&1; then return 0; fi
   echo "Installing xcodes CLI for automated Xcode setup..."
-  mkdir -p /usr/local/bin
+  sudo mkdir -p /usr/local/bin
   curl -fsSL https://github.com/XcodesOrg/xcodes/releases/latest/download/xcodes.zip -o /tmp/xcodes.zip
   unzip -qo /tmp/xcodes.zip -d /tmp
   sudo mv /tmp/xcodes /usr/local/bin/xcodes
