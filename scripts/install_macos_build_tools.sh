@@ -39,15 +39,29 @@ if [[ -f "$HOME/.cargo/env" ]]; then
 fi
 
 echo "Checking Xcode..."
+
+# Install xcodes CLI for automated Xcode installation
+ensure_xcodes() {
+  if command -v xcodes >/dev/null 2>&1; then return 0; fi
+  echo "Installing xcodes CLI for automated Xcode setup..."
+  mkdir -p /usr/local/bin
+  curl -fsSL https://github.com/XcodesOrg/xcodes/releases/latest/download/xcodes.zip -o /tmp/xcodes.zip
+  unzip -qo /tmp/xcodes.zip -d /tmp
+  sudo mv /tmp/xcodes /usr/local/bin/xcodes
+  sudo chmod +x /usr/local/bin/xcodes
+  rm -f /tmp/xcodes.zip
+}
+
 if ! xcode-select -p >/dev/null 2>&1; then
-  echo "Xcode not found. Download from https://developer.apple.com/xcode/ or the App Store."
-  echo "After installing, run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
-  exit 1
+  echo "Xcode not found. Installing via xcodes..."
+  ensure_xcodes
+  xcodes install --latest --select
+elif [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
+  echo "Command Line Tools installed instead of Xcode. Installing Xcode via xcodes..."
+  ensure_xcodes
+  xcodes install --latest --select
 fi
-if [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
-  echo "Wrong Xcode path selected. Fixing..."
-  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-fi
+
 sudo xcodebuild -license accept 2>/dev/null || true
 sudo xcodebuild -runFirstLaunch 2>/dev/null || true
 
