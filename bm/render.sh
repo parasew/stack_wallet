@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# render.sh — Convert benchmark markdown report to HTML + PDF
+# render.sh: Convert benchmark markdown report to HTML + PDF
 # Usage:
 #   ./bm/compare.py bm/results/ > report.md
 #   ./bm/render.sh report.md [--open]
@@ -30,7 +30,7 @@ echo "=== Markdown → HTML ==="
 
 pandoc "$MD_FILE" \
   --standalone \
-  --metadata title="Stack Wallet — Build Benchmark Report" \
+  --metadata title="Stack Wallet: Build Benchmark Report" \
   --include-in-header /tmp/_bm_css.html \
   -o "$HTML_FILE"
 rm -f /tmp/_bm_css.html

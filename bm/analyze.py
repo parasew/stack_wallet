@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-analyze.py — Merge benchmark CSVs and generate comparison report.
+analyze.py: Merge benchmark CSVs and generate comparison report.
 
 Usage: python3 bm/analyze.py <results_dir> [--format table|markdown]
 
@@ -106,7 +106,7 @@ def fmt_sec(v):
 def fmt_mb(kb):
     """Format KB as MB or GB."""
     if kb is None or kb == 0:
-        return "—"
+        return "-"
     mb = kb / 1024
     if mb >= 1024:
         return f"{mb/1024:.1f}G"
@@ -116,7 +116,7 @@ def fmt_mb(kb):
 def fmt_pct(new, old):
     """Format percentage change."""
     if old is None or old == 0:
-        return "—"
+        return "-"
     change = (new - old) / old * 100
     if change > 0:
         return f"+{change:.0f}%"
@@ -156,7 +156,7 @@ def generate_report(results_dir):
             pass
 
     # ---- Report header ----
-    lines.append("# Stack Wallet — Build Benchmark Report")
+    lines.append("# Stack Wallet: Build Benchmark Report")
     lines.append("")
     import datetime as dt_mod
     lines.append(f"**Generated:** {dt_mod.datetime.now(dt_mod.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
@@ -218,7 +218,7 @@ def generate_report(results_dir):
                     cells.append(fmt_sec(val[0]))
                     has_data = True
                 else:
-                    cells.append("—")
+                    cells.append("-")
 
             if not has_data:
                 continue
@@ -229,7 +229,7 @@ def generate_report(results_dir):
                 fastest = min(v for v in vals if v > 0)
                 pct = fmt_pct(fastest, slowest)
             else:
-                pct = "—"
+                pct = "-"
 
             lines.append(f"| {target_id} | {platform} | " + " | ".join(cells) + f" | {pct} |")
 
@@ -406,7 +406,7 @@ def generate_report(results_dir):
                 cells = []
                 for bl in all_baselines:
                     v = phase_data[tid].get(bl, 0)
-                    cells.append(fmt_sec(v) if v > 0 else "—")
+                    cells.append(fmt_sec(v) if v > 0 else "-")
                 pct_cell = ""
                 if all_baselines and total_per_bl.get(all_baselines[-1], 0) > 0:
                     pct = phase_data[tid].get(all_baselines[-1], 0) / total_per_bl[all_baselines[-1]] * 100
@@ -444,7 +444,7 @@ def generate_report(results_dir):
                     f"- **{tid}** ({platform}): "
                     f"reduced from {fmt_sec(slowest[1])} ({slowest[0]}) "
                     f"to {fmt_sec(fastest[1])} ({fastest[0]}) "
-                    f"— **{improvement:.0f}% faster**"
+                    f": **{improvement:.0f}% faster**"
                 )
 
     # Disk reduction
@@ -468,7 +468,7 @@ def generate_report(results_dir):
         if tc_first and tc_last and tc_first != tc_last:
             lines.append(
                 f"- **Rust toolchains** reduced from {tc_first} to {tc_last} "
-                f"({plat}) — simpler onboarding"
+                f"({plat}): simpler onboarding"
             )
 
     lines.append("")

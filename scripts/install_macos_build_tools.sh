@@ -62,7 +62,7 @@ ensure_xcodes() {
 }
 
 if ls /Applications/Xcode*.app >/dev/null 2>&1; then
-  # Xcode.app already on disk — just fix xcode-select if needed
+  # Xcode.app already on disk: just fix xcode-select if needed
   XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)"
   if ! xcode-select -p >/dev/null 2>&1 || [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
     echo "Xcode.app found at $XCODE_APP. Setting xcode-select path..."

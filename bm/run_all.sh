@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# run_all.sh — Cold → warm pairs, ordered from simplest to most optimized.
+# run_all.sh: Cold → warm pairs, ordered from simplest to most optimized.
 #
 # Run order:
 #   A. Cold no-sccache  → clean + build without sccache (baseline)

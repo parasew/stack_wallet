@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-charts.py — Generate SVG charts for the benchmark report.
+charts.py: Generate SVG charts for the benchmark report.
 
 Usage: python3 bm/charts.py <results_dir> <output_dir>
 

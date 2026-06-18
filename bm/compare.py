@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-compare.py — Render benchmark results from bm/results/<host>.csv files.
+compare.py: Render benchmark results from bm/results/<host>.csv files.
 
 Usage:
   python3 bm/compare.py bm/results/              # terminal report
@@ -76,22 +76,14 @@ def render(rows, fmt="terminal"):
     for r in rows:
         by_host[r.get("host","unknown")].append(r)
 
-    hdr = ["Mode", "Commit", "Arch", "Branch", "OS", "Warm", "Flags", "Wall Time", "Disk Δ"]
+    hdr = ["Date", "Mode", "Commit", "Arch", "OS", "Warm", "Flags", "Wall Time", "Disk Δ", "Comment"]
 
     for host, host_rows in sorted(by_host.items()):
-        # Extract latest date from rows for display
-        dates = [r.get("date","") for r in host_rows if r.get("date")]
-        latest = dates[-1][:19] + "Z" if dates else ""
-
         if fmt == "markdown":
             print(f"\n## {host}\n")
-            if latest:
-                print(f"*{latest}*\n")
         else:
             print(f"\n{'═'*80}")
             print(f"  {host}")
-            if latest:
-                print(f"  {latest}")
             print(f"{'═'*80}")
 
         # Sort: cold first, then by label
@@ -99,7 +91,9 @@ def render(rows, fmt="terminal"):
 
         if fmt == "markdown":
             print(f"| {' | '.join(hdr)} |")
-            print(f"|{'|'.join(['---']*len(hdr))}|")
+            # Right-align Wall Time column (index 7) for easier comparison
+            aligns = [":---" if h not in ("Wall Time", "Disk Δ") else "---:" for h in hdr]
+            print(f"|{'|'.join(aligns)}|")
         else:
             # Terminal table with rich/box drawing
             widths = [max(len(h), 18) for h in hdr]
@@ -108,17 +102,18 @@ def render(rows, fmt="terminal"):
             print(PIPE + PIPE.join("─"*w for w in widths) + PIPE)
 
         for r in host_rows:
+            date     = (r.get("date","")[:10]).strip()
             label    = hr_label(r.get("label",""))
             commit   = r.get("commit","")[:7]
             arch     = r.get("arch","")
-            branch   = r.get("branch","")[:12]
-            os_str   = f"{r.get('os_name','')} {r.get('os_ver','')}"[:14]
+            os_str   = f"{r.get('os_name','')} {r.get('os_ver','')}"
             warm     = "yes" if r.get("warm","0") == "1" else "no"
             flags    = r.get("flags","-").replace("SCCACHE=1,","").replace("SCCACHE=0,","") or "-"
             wall     = wall_fmt(r.get("wall_sec",""))
             disk     = f"{mb(r.get('disk_delta_kb',''))}MB"
+            comment  = r.get("comment","") or ""
 
-            cols = [label, commit, arch, branch, os_str, warm, flags, wall, disk]
+            cols = [date, label, commit, arch, os_str, warm, flags, wall, disk, comment]
 
             if fmt == "markdown":
                 print(f"| {' | '.join(cols)} |")

@@ -90,7 +90,7 @@ ifeq ($(PLATFORM),Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
 endif
-	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed — build cache disabled"
+	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed: build cache disabled"
 	@echo "[OK] All core CLI requirements found!"
 
 check-macos-sdk: ## Verify XCode on macOS
@@ -189,7 +189,7 @@ patch-submodules: ## Apply portability patches to submodules
 
 build-macos: check-reqs-macos check-macos-sdk macos-local-state ## Build MacOS Release (Single source of truth)
 ifeq ($(SKIP_NATIVE),1)
-	@echo "=== SKIP_NATIVE=1 — skipping native Rust builds ==="
+	@echo "=== SKIP_NATIVE=1: skipping native Rust builds ==="
 	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-app
 else
 	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app

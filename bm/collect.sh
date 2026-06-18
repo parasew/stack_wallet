@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# collect.sh — Measure disk usage and artifact sizes independent of benchmarks
+# collect.sh: Measure disk usage and artifact sizes independent of benchmarks
 # Usage: ./bm/collect.sh [--outdir DIR] [--baseline NAME]
 #
 # Outputs a CSV with per-directory and per-artifact sizes.

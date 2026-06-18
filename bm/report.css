@@ -1,10 +1,10 @@
-/* Stack Wallet Build Benchmark Report — Professional stylesheet */
+/* Stack Wallet Build Benchmark Report: Professional stylesheet */
 @page {
-  size: A4;
-  margin: 2cm 2.2cm;
+  size: A4 landscape;
+  margin: 1.5cm 1.8cm;
   @bottom-center {
     content: "Page " counter(page) " of " counter(pages);
-    font-size: 8pt;
+    font-size: 7pt;
     color: #888;
   }
 }
@@ -65,17 +65,19 @@ th {
   background: #2563eb;
   color: white;
   font-weight: 600;
-  padding: 7px 10px;
+  padding: 4px 6px;
   text-align: left;
-  font-size: 8.5pt;
+  font-size: 7pt;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.2px;
 }
 
 td {
-  border: 1px solid #e0e0e0;
-  padding: 5px 10px;
+  border: 1px solid #ccc;
+  padding: 3px 6px;
   text-align: left;
+  font-family: "SF Mono", "Menlo", "Monaco", "Cascadia Code", monospace;
+  font-size: 7.5pt;
 }
 
 tr:nth-child(even) td {
@@ -104,7 +106,7 @@ td:last-child {
   font-weight: 600;
 }
 
-/* Phase breakdown table — alternating header */
+/* Phase breakdown table: alternating header */
 table:last-of-type th {
   background: #1e293b;
 }

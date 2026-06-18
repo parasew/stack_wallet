@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# bench.sh — Simple build benchmark for stack_wallet
+# bench.sh: Simple build benchmark for stack_wallet
 #
 # Usage:
 #   bash bm/bench.sh                    # cold build with sccache (default)
@@ -95,10 +95,10 @@ DISK_DELTA=$((DISK_AFTER - DISK_BEFORE))
 
 # Write CSV header if new file
 if [ ! -f "$OUTFILE" ]; then
-  echo "label,branch,commit,host,arch,os_name,os_ver,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb" > "$OUTFILE"
+  echo "label,branch,commit,host,arch,os_name,os_ver,date,warm,flags,wall_sec,success,disk_total_kb,disk_delta_kb,comment" > "$OUTFILE"
 fi
 
-echo "${LABEL},${BRANCH},${COMMIT},${HOST},${ARCH},${OS_NAME},${OS_VER},${DATE},${WARM},${MAKE_FLAGS:--},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}" >> "$OUTFILE"
+echo "${LABEL},${BRANCH},${COMMIT},${HOST},${ARCH},${OS_NAME},${OS_VER},${DATE},${WARM},${MAKE_FLAGS:--},${WALL},$((RC == 0 ? 1 : 0)),${DISK_AFTER},${DISK_DELTA}," >> "$OUTFILE"
 
 echo ""
 if [ $RC -eq 0 ]; then
@@ -112,13 +112,13 @@ echo "Results appended: $OUTFILE" | toilet -f term --metal
 # Show all runs
 echo ""
 echo "=== All results for $HOST ($ARCH $OS_NAME $OS_VER) ==="
-printf "%-22s %-10s %-8s %-4s %10s %8s\n" MODE COMMIT FLAGS WARM WALL DISK
-printf '%s\n' '──────────────────────────────────────────────────────────────────'
-tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host arch os_name os_ver date warm flags wall_sec success disk_total disk_delta; do
+printf "%-12s %-20s %-8s %-10s %4s %10s %8s %s\n" DATE MODE COMMIT FLAGS WARM WALL DISK COMMENT
+printf '%s\n' '──────────────────────────────────────────────────────────────────────────────────────'
+tail -n +2 "$OUTFILE" | while IFS=, read -r label branch commit host arch os_name os_ver date warm flags wall_sec success disk_total disk_delta comment; do
   delta_mb=$((disk_delta / 1024))
   w=$((wall_sec)); m=$((w/60)); s=$((w%60))
   time_fmt="${m}m${s}s"
   warm_label=$([ "$warm" = "1" ] && echo "yes" || echo "no")
   [ "$success" = "1" ] && ok="✓" || ok="✗"
-  printf "%-22s %-10s %-8s %-4s %10s %8s\n" "$label" "${commit:0:7}" "${flags:--}" "$warm_label" "$time_fmt" "$ok ${delta_mb}MB"
+  printf "%-12s %-20s %-8s %-10s %-4s %10s %8s %s\n" "${date:0:10}" "$label" "${commit:0:7}" "${flags:--}" "$warm_label" "$time_fmt" "$ok ${delta_mb}MB" "$comment"
 done
