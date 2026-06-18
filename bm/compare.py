@@ -79,11 +79,19 @@ def render(rows, fmt="terminal"):
     hdr = ["Mode", "Commit", "Arch", "Branch", "OS", "Warm", "Flags", "Wall Time", "Disk Δ"]
 
     for host, host_rows in sorted(by_host.items()):
+        # Extract latest date from rows for display
+        dates = [r.get("date","") for r in host_rows if r.get("date")]
+        latest = dates[-1][:19] + "Z" if dates else ""
+
         if fmt == "markdown":
             print(f"\n## {host}\n")
+            if latest:
+                print(f"*{latest}*\n")
         else:
             print(f"\n{'═'*80}")
             print(f"  {host}")
+            if latest:
+                print(f"  {latest}")
             print(f"{'═'*80}")
 
         # Sort: cold first, then by label
