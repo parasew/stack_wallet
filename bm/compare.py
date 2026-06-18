@@ -120,9 +120,12 @@ def render(rows, fmt="terminal"):
     # Comparison summary
     labels = sorted(set(r["label"] for r in rows))
     if len(labels) > 1:
-        print(f"\n{'═'*80}")
-        print(f"  Summary")
-        print(f"{'═'*80}")
+        if fmt == "markdown":
+            print(f"\n## Summary\n")
+        else:
+            print(f"\n{'═'*80}")
+            print(f"  Summary")
+            print(f"{'═'*80}")
         machines = sorted(set(f"{r.get('host','')} ({r.get('arch','')} {r.get('os_name','')} {r.get('os_ver','')})" for r in rows))
         for m in machines:
             print(f"  Machine: {m}")
