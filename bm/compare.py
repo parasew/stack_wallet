@@ -134,14 +134,6 @@ def render(rows, fmt="terminal"):
                 avg = mean(times)
                 print(f"  {hr_label(label):25s}  {wall_fmt(avg):>10s}  (n={len(times)})")
 
-    # Embed chart references for markdown output
-    if fmt == "markdown":
-        print("\n---")
-        print("\n## Charts\n")
-        charts_dir = "bm/results"
-        print(f"![Build Time]({charts_dir}/chart_build_time.svg)")
-        print(f"![Disk Usage]({charts_dir}/chart_disk_usage.svg)")
-
 def compare(dir1, dir2=None):
     """Compare two result directories."""
     rows1 = load_results(dir1)
