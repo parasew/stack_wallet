@@ -117,26 +117,6 @@ def render(rows, fmt="terminal"):
             else:
                 print(PIPE + PIPE.join(c.center(w) for c,w in zip(cols,widths)) + PIPE)
 
-    # Comparison summary
-    labels = sorted(set(r["label"] for r in rows))
-    if len(labels) > 1:
-        if fmt == "markdown":
-            print(f"\n## Summary\n")
-        else:
-            print(f"\n{'═'*80}")
-            print(f"  Summary")
-            print(f"{'═'*80}")
-        machines = sorted(set(f"{r.get('host','')} ({r.get('arch','')} {r.get('os_name','')} {r.get('os_ver','')})" for r in rows))
-        for m in machines:
-            print(f"  Machine: {m}")
-        for label in labels:
-            lbl_rows = [r for r in rows if r["label"] == label]
-            times = [wall_s(r["wall_sec"]) for r in lbl_rows]
-            disks = [mb(r["disk_delta_kb"]) for r in lbl_rows]
-            if len(times) >= 1:
-                avg = mean(times)
-                print(f"  {hr_label(label):25s}  {wall_fmt(avg):>10s}  (n={len(times)})")
-
 def compare(dir1, dir2=None):
     """Compare two result directories."""
     rows1 = load_results(dir1)
