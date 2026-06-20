@@ -6,6 +6,11 @@
 
 $ErrorActionPreference = "Stop"
 
+function Refresh-Path {
+    # Reload Machine + User PATH into current session so newly-installed tools are discoverable.
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+}
+
 Write-Host "=== Stack Wallet Windows Host Bootstrap ===" -ForegroundColor Cyan
 
 # --- 1. Developer Mode ---
@@ -32,9 +37,13 @@ if (-not $wslInstalled) {
     Write-Host "  WSL2 + Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
 } else {
     Write-Host "  WSL2 already installed." -ForegroundColor Green
-    $distros = wsl -l -q | Where-Object { $_ -match "Ubuntu-24.04" }
+    $distros = (wsl -l -q 2>$null) | Where-Object { $_ -match "Ubuntu-24.04" }
     if (-not $distros) {
-        Write-Host "  [WARN] Ubuntu 24.04 not found in WSL. Install with: wsl --install -d Ubuntu-24.04" -ForegroundColor Yellow
+        Write-Host "  Ubuntu 24.04 not found in WSL. Installing now..." -ForegroundColor Yellow
+        wsl --install -d Ubuntu-24.04 --no-launch
+        Write-Host "  Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
+    } else {
+        Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
     }
 }
 
@@ -53,24 +62,73 @@ if (-not $vsInstalled) {
 
 # --- 4. NuGet + CppWinRT ---
 Write-Host "[4/9] Installing NuGet and CppWinRT 2.0.210806.1..." -ForegroundColor Yellow
-winget install 9WZDNCRDMDM3 --accept-source-agreements --accept-package-agreements 2>$null
-if ($LASTEXITCODE -ne 0) { Write-Host "  NuGet already installed or install skipped." -ForegroundColor Yellow }
-winget install Microsoft.Windows.CppWinRT --version 2.0.210806.1 --accept-source-agreements --accept-package-agreements 2>$null
-if ($LASTEXITCODE -ne 0) { Write-Host "  CppWinRT already installed or install skipped." -ForegroundColor Yellow }
+
+# Ensure NuGet CLI is available (winget package may not place it on PATH immediately).
+function Ensure-NuGet {
+    $nuget = Get-Command nuget -ErrorAction SilentlyContinue
+    if (-not $nuget) {
+        winget install Microsoft.NuGet --accept-source-agreements --accept-package-agreements 2>$null | Out-Null
+        # Refresh PATH for this session.
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        $nuget = Get-Command nuget -ErrorAction SilentlyContinue
+    }
+    if (-not $nuget) {
+        Write-Host "  NuGet not on PATH; downloading nuget.exe locally..." -ForegroundColor Yellow
+        $localNugetDir = "$env:USERPROFILE\.nuget"
+        if (-not (Test-Path $localNugetDir)) { New-Item -ItemType Directory -Path $localNugetDir -Force | Out-Null }
+        Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile "$localNugetDir\nuget.exe"
+        $env:Path = "$localNugetDir;$env:Path"
+        $nuget = "$localNugetDir\nuget.exe"
+    }
+    return $nuget.Source
+}
+
+$nugetPath = Ensure-NuGet
+Write-Host "  NuGet available at: $nugetPath" -ForegroundColor Green
+
+# CppWinRT is only distributed via NuGet, not winget.
+Write-Host "  Installing CppWinRT 2.0.210806.1 via NuGet in project root..." -ForegroundColor Yellow
+$projectRoot = Split-Path -Parent $PSScriptRoot
+& $nugetPath sources add -Name "nuget.org" -Source "https://api.nuget.org/v3/index.json" 2>$null | Out-Null
+Push-Location $projectRoot
+try {
+    & $nugetPath install Microsoft.Windows.CppWinRT -Version 2.0.210806.1 -OutputDirectory "$env:USERPROFILE\.nuget\packages" 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "nuget install Microsoft.Windows.CppWinRT failed with exit code $LASTEXITCODE." }
+    Write-Host "  CppWinRT installed." -ForegroundColor Green
+} finally {
+    Pop-Location
+}
 
 # --- 5. Flutter ---
 Write-Host "[5/9] Installing Flutter 3.38.5..." -ForegroundColor Yellow
 $flutterInstalled = Get-Command flutter -ErrorAction SilentlyContinue
 if (-not $flutterInstalled) {
-    winget install Google.Flutter --accept-source-agreements --accept-package-agreements 2>$null
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "  [WARN] winget install failed. Install Flutter manually: https://docs.flutter.dev/get-started/install/windows" -ForegroundColor Yellow
-    } else {
-        Write-Host "  Flutter installed." -ForegroundColor Green
+    $flutterDir = "C:\flutter"
+    $flutterZip = "$env:TEMP\flutter_windows_3.38.5-stable.zip"
+    $flutterUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.38.5-stable.zip"
+
+    Write-Host "  Flutter not found. Downloading from $flutterUrl ..." -ForegroundColor Yellow
+    try {
+        if (Test-Path $flutterZip) { Remove-Item $flutterZip -Force }
+        Invoke-WebRequest -Uri $flutterUrl -OutFile $flutterZip -ErrorAction Stop
+
+        if (Test-Path $flutterDir) { Remove-Item $flutterDir -Recurse -Force }
+        Expand-Archive -Path $flutterZip -DestinationPath "C:\" -Force
+        Remove-Item $flutterZip -Force
+
+        # Add to user PATH permanently and current session.
+        [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$flutterDir\bin", "User")
+        $env:Path = $env:Path + ";$flutterDir\bin"
+
+        Write-Host "  Flutter 3.38.5 installed at $flutterDir." -ForegroundColor Green
+    } catch {
+        Write-Host "  [WARN] Automatic Flutter download failed: $_" -ForegroundColor Yellow
+        Write-Host "  Install Flutter manually from https://docs.flutter.dev/get-started/install/windows" -ForegroundColor Yellow
     }
 } else {
     Write-Host "  Flutter already installed: $(flutter --version 2>$null | Select-Object -First 1)" -ForegroundColor Green
 }
+Refresh-Path
 
 # --- 6. Rust (single toolchain: 1.85.1) ---
 Write-Host "[6/9] Installing Rust 1.85.1 + MSVC target..." -ForegroundColor Yellow
@@ -114,6 +172,7 @@ if (-not $goInstalled) {
 } else {
     Write-Host "  Go already installed: $(go version)" -ForegroundColor Green
 }
+Refresh-Path
 
 # --- 8. CMake, Ninja ---
 Write-Host "[8/9] Installing CMake and Ninja..." -ForegroundColor Yellow
@@ -121,6 +180,7 @@ winget install Kitware.CMake --accept-source-agreements --accept-package-agreeme
 if ($LASTEXITCODE -ne 0) { Write-Host "  CMake already installed or install skipped." -ForegroundColor Yellow }
 winget install NinjaBuild.Ninja --accept-source-agreements --accept-package-agreements 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Host "  Ninja already installed or install skipped." -ForegroundColor Yellow }
+Refresh-Path
 
 # --- 9. Meson ---
 Write-Host "[9/9] Installing Meson..." -ForegroundColor Yellow
@@ -131,6 +191,7 @@ if (-not $mesonInstalled) {
 } else {
     Write-Host "  Meson already installed." -ForegroundColor Green
 }
+Refresh-Path
 
 # --- Verification ---
 Write-Host "" -ForegroundColor Cyan
