@@ -31,16 +31,19 @@ try {
 Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
 
 function Show-NestedVirtualizationHelp {
-    Write-Host "`n  [ERROR] WSL2 cannot start because virtualization / nested virtualization is not enabled." -ForegroundColor Red
-    Write-Host "`n  If you are running Windows in a virtual machine (Parallels, VMware, VirtualBox, UTM, Hyper-V, etc.)," -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  [ERROR] WSL2 cannot start because virtualization / nested virtualization is not enabled." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  If you are running Windows in a virtual machine (Parallels, VMware, VirtualBox, UTM, Hyper-V, etc.)," -ForegroundColor Yellow
     Write-Host "  you must enable NESTED VIRTUALIZATION in your hypervisor settings, then re-run this script:" -ForegroundColor Yellow
-    Write-Host "    - UTM (Apple Silicon Mac): VM Settings → System → Use 'Apple Virtualization' engine (not QEMU)." -ForegroundColor Yellow
-    Write-Host "                               Apple Virtualization provides the nested virtualization WSL2 needs." -ForegroundColor Yellow
-    Write-Host "    - Parallels Desktop: VM Configure → Hardware → CPU & Memory → Advanced → 'Nested Virtualization'" -ForegroundColor Yellow
-    Write-Host "    - VMware Fusion: VM Settings → Processors & Memory → Advanced → 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
-    Write-Host "    - VirtualBox: VM Settings → System → Acceleration → 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
+    Write-Host "    - UTM (Apple Silicon Mac): VM Settings > System > Use 'Apple Virtualization' engine (not QEMU)." -ForegroundColor Yellow
+    Write-Host "      Apple Virtualization provides the nested virtualization WSL2 needs." -ForegroundColor Yellow
+    Write-Host "    - Parallels Desktop: VM Configure > Hardware > CPU & Memory > Advanced > 'Nested Virtualization'" -ForegroundColor Yellow
+    Write-Host "    - VMware Fusion: VM Settings > Processors & Memory > Advanced > 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
+    Write-Host "    - VirtualBox: VM Settings > System > Acceleration > 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
     Write-Host "    - Hyper-V host: Set-VMProcessor -VMName 'YourVM' -ExposeVirtualizationExtensions `$true" -ForegroundColor Yellow
-    Write-Host "`n  If this is physical hardware:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  If this is physical hardware:" -ForegroundColor Yellow
     Write-Host "    1. Reboot into UEFI/BIOS and enable virtualization (Intel VT-x / AMD-V / SVM)." -ForegroundColor Yellow
     Write-Host "    2. In Windows run: dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart" -ForegroundColor Yellow
     Write-Host "    3. Reboot Windows and re-run this script." -ForegroundColor Yellow
