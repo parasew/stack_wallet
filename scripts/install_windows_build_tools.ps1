@@ -29,22 +29,68 @@ try {
 # --- 2. WSL2 + Ubuntu 24.04 ---
 # TODO @parasew: check for Ubuntu 26 compat later
 Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
-$wslInstalled = $false
-try { $null = wsl --status 2>$null; $wslInstalled = $true } catch { }
 
-if (-not $wslInstalled) {
-    wsl --install -d Ubuntu-24.04 --no-launch
-    Write-Host "  WSL2 + Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
-} else {
-    Write-Host "  WSL2 already installed." -ForegroundColor Green
-    $distros = (wsl -l -q 2>$null) | Where-Object { $_ -match "Ubuntu-24.04" }
-    if (-not $distros) {
-        Write-Host "  Ubuntu 24.04 not found in WSL. Installing now..." -ForegroundColor Yellow
-        wsl --install -d Ubuntu-24.04 --no-launch
-        Write-Host "  Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
-    } else {
-        Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
+function Show-NestedVirtualizationHelp {
+    Write-Host "`n  [ERROR] WSL2 cannot start because virtualization / nested virtualization is not enabled." -ForegroundColor Red
+    Write-Host "`n  If you are running Windows in a virtual machine (Parallels, VMware, VirtualBox, UTM, Hyper-V, etc.)," -ForegroundColor Yellow
+    Write-Host "  you must enable NESTED VIRTUALIZATION in your hypervisor settings, then re-run this script:" -ForegroundColor Yellow
+    Write-Host "    - UTM (Apple Silicon Mac): VM Settings → System → Use 'Apple Virtualization' engine (not QEMU)." -ForegroundColor Yellow
+    Write-Host "                               Apple Virtualization provides the nested virtualization WSL2 needs." -ForegroundColor Yellow
+    Write-Host "    - Parallels Desktop: VM Configure → Hardware → CPU & Memory → Advanced → 'Nested Virtualization'" -ForegroundColor Yellow
+    Write-Host "    - VMware Fusion: VM Settings → Processors & Memory → Advanced → 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
+    Write-Host "    - VirtualBox: VM Settings → System → Acceleration → 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
+    Write-Host "    - Hyper-V host: Set-VMProcessor -VMName 'YourVM' -ExposeVirtualizationExtensions `$true" -ForegroundColor Yellow
+    Write-Host "`n  If this is physical hardware:" -ForegroundColor Yellow
+    Write-Host "    1. Reboot into UEFI/BIOS and enable virtualization (Intel VT-x / AMD-V / SVM)." -ForegroundColor Yellow
+    Write-Host "    2. In Windows run: dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart" -ForegroundColor Yellow
+    Write-Host "    3. Reboot Windows and re-run this script." -ForegroundColor Yellow
+}
+
+function Enable-WslFeature {
+    # Make sure the WSL2 kernel / Virtual Machine Platform feature is enabled.
+    Write-Host "  Enabling WSL2 kernel features (Virtual Machine Platform, WSL)..." -ForegroundColor Yellow
+    try {
+        wsl --install --no-distribution 2>$null | Out-Null
+    } catch { }
+    $vmPlatform = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -ErrorAction SilentlyContinue
+    if ($vmPlatform -and $vmPlatform.State -ne "Enabled") {
+        Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All -NoRestart | Out-Null
     }
+    $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
+    if ($wslFeature -and $wslFeature.State -ne "Enabled") {
+        Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart | Out-Null
+    }
+}
+
+function Test-WslKernelHealthy {
+    # Check whether WSL2 can actually start a VM. If not, nested virtualization is missing.
+    try { $null = wsl --status 2>$null; return $true } catch { return $false }
+}
+
+# First check: can WSL2 run at all? If not, nested virtualization is likely missing.
+$wslKernelOk = Test-WslKernelHealthy
+if (-not $wslKernelOk) {
+    Enable-WslFeature
+    # Re-check after enabling features.
+    $wslKernelOk = Test-WslKernelHealthy
+    if (-not $wslKernelOk) {
+        Show-NestedVirtualizationHelp
+        throw "WSL2 virtualization prerequisite missing."
+    }
+}
+
+# At this point WSL2 kernel can start. Now install Ubuntu if missing.
+$distros = (wsl -l -q 2>$null) | Where-Object { $_ -match "Ubuntu-24.04" }
+if ($distros) {
+    Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
+} else {
+    Write-Host "  Installing Ubuntu 24.04 in WSL2..." -ForegroundColor Yellow
+    $installOutput = wsl --install -d Ubuntu-24.04 --no-launch 2>&1
+    if ($LASTEXITCODE -ne 0 -or $installOutput -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform") {
+        Show-NestedVirtualizationHelp
+        throw "WSL2 virtualization prerequisite missing."
+    }
+    Write-Host "  Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
 }
 
 # --- 3. Visual Studio 2022 Community version ---
