@@ -13,23 +13,6 @@ function Refresh-Path {
 
 Write-Host "=== Stack Wallet Windows Host Bootstrap ===" -ForegroundColor Cyan
 
-# --- 1. Developer Mode ---
-Write-Host "[1/9] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
-try {
-    $RegistryKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
-    if (-not (Test-Path $RegistryKeyPath)) {
-        New-Item -Path $RegistryKeyPath -Force | Out-Null
-    }
-    Set-ItemProperty -Path $RegistryKeyPath -Name "AllowDevelopmentWithoutDevLicense" -Value 1 -Type DWord
-    Write-Host "  Developer Mode enabled." -ForegroundColor Green
-} catch {
-    Write-Host "  [WARN] Could not enable Developer Mode via registry. Enable manually via Settings > Developer." -ForegroundColor Yellow
-}
-
-# --- 2. WSL2 + Ubuntu 24.04 ---
-# TODO @parasew: check for Ubuntu 26 compat later
-Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
-
 function Show-NestedVirtualizationHelp {
     Write-Host ""
     Write-Host "  [ERROR] WSL2 cannot start because virtualization / nested virtualization is not enabled." -ForegroundColor Red
@@ -65,24 +48,47 @@ function Enable-WslFeature {
     }
 }
 
-function Test-WslKernelHealthy {
-    # Check whether WSL2 can actually start a VM. If not, nested virtualization is missing.
-    try { $null = wsl --status 2>$null; return $true } catch { return $false }
-}
-
-# First check: can WSL2 run at all? If not, nested virtualization is likely missing.
-$wslKernelOk = Test-WslKernelHealthy
-if (-not $wslKernelOk) {
-    Enable-WslFeature
-    # Re-check after enabling features.
-    $wslKernelOk = Test-WslKernelHealthy
-    if (-not $wslKernelOk) {
-        Show-NestedVirtualizationHelp
-        throw "WSL2 virtualization prerequisite missing."
+function Test-Wsl2VmCanStart {
+    # wsl --status may pass even when the VM platform cannot start a WSL2 VM.
+    # Setting default version to 2 forces WSL2 to actually try using virtualization.
+    $output = & wsl --set-default-version 2 2>&1
+    $outputString = $output | Out-String
+    if ($outputString -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform|Please enable the Virtual Machine Platform Windows feature") {
+        return $false
     }
+    return $true
 }
 
-# At this point WSL2 kernel can start. Now install Ubuntu if missing.
+# --- Preflight: verify WSL2 can actually start before spending time on large downloads ---
+Write-Host "[Preflight] Verifying WSL2 / nested virtualization is functional..." -ForegroundColor Yellow
+$wsl2Ok = Test-Wsl2VmCanStart
+if (-not $wsl2Ok) {
+    Enable-WslFeature
+    $wsl2Ok = Test-Wsl2VmCanStart
+}
+if (-not $wsl2Ok) {
+    Show-NestedVirtualizationHelp
+    throw "WSL2 virtualization prerequisite missing."
+}
+Write-Host "  WSL2 virtualization is functional." -ForegroundColor Green
+
+# --- 1. Developer Mode ---
+Write-Host "[1/9] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
+try {
+    $RegistryKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
+    if (-not (Test-Path $RegistryKeyPath)) {
+        New-Item -Path $RegistryKeyPath -Force | Out-Null
+    }
+    Set-ItemProperty -Path $RegistryKeyPath -Name "AllowDevelopmentWithoutDevLicense" -Value 1 -Type DWord
+    Write-Host "  Developer Mode enabled." -ForegroundColor Green
+} catch {
+    Write-Host "  [WARN] Could not enable Developer Mode via registry. Enable manually via Settings > Developer." -ForegroundColor Yellow
+}
+
+# --- 2. WSL2 + Ubuntu 24.04 ---
+# TODO @parasew: check for Ubuntu 26 compat later
+Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
+
 $distros = (wsl -l -q 2>$null) | Where-Object { $_ -match "Ubuntu-24.04" }
 if ($distros) {
     Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
