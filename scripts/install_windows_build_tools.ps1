@@ -78,8 +78,17 @@ $rustupInstalled = Get-Command rustup -ErrorAction SilentlyContinue
 if (-not $rustupInstalled) {
     Write-Host "  Installing rustup-init..."
     Invoke-WebRequest -Uri "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe" -OutFile "$env:TEMP\rustup-init.exe"
-    & "$env:TEMP\rustup-init.exe" -y --default-toolchain 1.85.1
-    Remove-Item "$env:TEMP\rustup-init.exe"
+    $rustupProc = Start-Process -FilePath "$env:TEMP\rustup-init.exe" -ArgumentList "-y", "--default-toolchain", "1.85.1" -Wait -PassThru
+    if ($rustupProc.ExitCode -ne 0) {
+        throw "rustup-init exited with code $($rustupProc.ExitCode)."
+    }
+    # Give Windows a moment to release the installer handle before cleanup.
+    Start-Sleep -Seconds 2
+    try {
+        Remove-Item "$env:TEMP\rustup-init.exe" -Force -ErrorAction Stop
+    } catch {
+        Write-Host "  [WARN] Could not remove temp rustup-init.exe (in use or locked). It is safe to ignore." -ForegroundColor Yellow
+    }
     $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
     Write-Host "  Rust 1.85.1 installed." -ForegroundColor Green
 } else {
