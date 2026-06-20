@@ -45,7 +45,7 @@ export SCCACHE_CACHE_SIZE
 endif
 
 .PHONY: help check-reqs check-reqs-macos check-reqs-windows check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
-	build-linux build-macos build-ios build-android build-windows \
+	build-linux build-macos build-ios build-android build-windows download-windows \
 	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-macos-env \
 	test-mwc
 
@@ -85,7 +85,9 @@ check-reqs: ## Verify essential build tools
 		fi; \
 		exit 1; \
 	}
+ifneq ($(OS),Windows_NT)
 	@command -v pkg-config >/dev/null 2>&1 || { echo >&2 "[ERROR] pkg-config not installed."; exit 1; }
+endif
 ifeq ($(PLATFORM),Darwin)
 	@command -v autoreconf >/dev/null 2>&1 || { echo >&2 "[ERROR] autoconf/autoreconf not installed."; exit 1; }
 	@command -v aclocal >/dev/null 2>&1 || { echo >&2 "[ERROR] automake/aclocal not installed."; exit 1; }
@@ -134,10 +136,17 @@ else
 	@true
 endif
 
-check-reqs-windows: ## Verify Windows/WSL requirements
+check-reqs-windows: ## Verify Windows host build requirements
 	@echo "Checking Windows prerequisites..."
-	@command -v wsl >/dev/null 2>&1 || command -v wsl.exe >/dev/null 2>&1 || { echo >&2 "[ERROR] WSL not found. Run this inside WSL2 or install WSL from https://aka.ms/wsl."; exit 1; }
-	@echo "[OK] Windows/WSL requirements found!"
+	@command -v wsl >/dev/null 2>&1 || command -v wsl.exe >/dev/null 2>&1 || { echo >&2 "[ERROR] WSL not found. Run 'wsl --install -d Ubuntu-24.04'."; exit 1; }
+	@command -v flutter >/dev/null 2>&1 || { echo >&2 "[ERROR] Flutter not installed. Run 'scripts/install_windows_build_tools.ps1'."; exit 1; }
+	@command -v dart >/dev/null 2>&1 || { echo >&2 "[ERROR] Dart not installed."; exit 1; }
+	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.85.1 toolchain not installed."; exit 1; }
+	@rustup run 1.85.1 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-msvc" || { echo >&2 "[ERROR] x86_64-pc-windows-msvc target not added to Rust 1.85.1. Run: rustup target add x86_64-pc-windows-msvc --toolchain 1.85.1"; exit 1; }
+	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
+	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
+	@command -v ninja >/dev/null 2>&1 || { echo >&2 "[ERROR] Ninja not installed."; exit 1; }
+	@echo "[OK] Windows host requirements found!"
 
 # --- MAINTENANCE ---
 
@@ -178,6 +187,8 @@ patch-submodules: ## Apply portability patches to submodules
 	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/cargo +1.71.0 build/cargo build/g' {} + 2>/dev/null || true
 	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/rustup +1.71.0 target add/rustup target add/g' {} + 2>/dev/null || true
 	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/cargo +1.71.0 build/cargo build/g' {} + 2>/dev/null || true
+	@echo "Fixing frostdart ARM copy path in build_all.bat..."
+	@sed -i.bak 's|copy "..\\target\\x86_64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|copy "..\\target\\aarch64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|g' crypto_plugins/frostdart/scripts/windows/build_all.bat 2>/dev/null || true
 	@echo "Normalizing Linux script shebangs for NixOS..."
 	@find crypto_plugins -path "*/scripts/linux/*.sh" -type f -exec sed -i.bak '1s|^#!/bin/bash$$|#!/usr/bin/env bash|' {} + 2>/dev/null || true
 	@echo "Disabling strict Rust checks..."
@@ -499,12 +510,26 @@ build-android: check-reqs init ## Build Android APK
 	@$(FLUTTER) pub get
 	@$(FLUTTER) build apk --release
 
-build-windows: check-reqs check-reqs-windows init ## Build Windows Release
-	@echo "--- Building native plugins in WSL..."
-	@wsl bash -c "cd scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -f"
-	@echo "--- Building native dependencies..."
+prebuild-windows: ## Run Windows prebuild config (PowerShell)
+	@echo "--- Running Windows prebuild..."
+	@powershell -ExecutionPolicy Bypass -File scripts/prebuild.ps1
+
+build-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Build Windows Release
+	@echo "--- Configuring project and building WSL-only plugins (libepiccash, libmwc)..."
+	@wsl bash -c "cd $(CURDIR)/scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i"
+	@wsl bash -c "cd $(CURDIR)/scripts/windows && bash build_wsl_plugins_only.sh"
+	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(DART) run coinlib:build_windows
-	@cd crypto_plugins/frostdart && build_all.bat
+	@crypto_plugins\frostdart\scripts\windows\build_all.bat
+	@echo "--- Compiling app..."
+	@$(FLUTTER) build windows --release
+
+download-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Download prebuilt DLLs & build (faster, no WSL compilation)
+	@echo "--- Configuring project (download mode)..."
+	@wsl bash -c "cd $(CURDIR)/scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d"
+	@echo "--- Building host native dependencies..."
+	@$(FLUTTER) pub get
+	@$(DART) run coinlib:build_windows
 	@echo "--- Compiling app..."
 	@$(FLUTTER) build windows --release
