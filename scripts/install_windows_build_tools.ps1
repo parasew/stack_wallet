@@ -48,31 +48,6 @@ function Enable-WslFeature {
     }
 }
 
-function Test-Wsl2VmCanStart {
-    # wsl --status may pass even when the VM platform cannot start a WSL2 VM.
-    # Setting default version to 2 forces WSL2 to actually try using virtualization.
-    $output = & wsl --set-default-version 2 2>&1
-    $outputString = $output | Out-String
-    if ($outputString -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform|Please enable the Virtual Machine Platform Windows feature") {
-        return $false
-    }
-    return $true
-}
-
-# --- Preflight: verify WSL2 can actually start before spending time on large downloads ---
-Write-Host "[Preflight] Verifying WSL2 / nested virtualization is functional..." -ForegroundColor Yellow
-$wsl2Ok = Test-Wsl2VmCanStart
-if (-not $wsl2Ok) {
-    Enable-WslFeature
-    $wsl2Ok = Test-Wsl2VmCanStart
-}
-if (-not $wsl2Ok) {
-    Show-NestedVirtualizationHelp
-    throw "WSL2 virtualization prerequisite missing."
-}
-Write-Host "  WSL2 virtualization is functional." -ForegroundColor Green
-
-# --- 1. Developer Mode ---
 Write-Host "[1/9] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
 try {
     $RegistryKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
@@ -94,6 +69,7 @@ if ($distros) {
     Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
 } else {
     Write-Host "  Installing Ubuntu 24.04 in WSL2..." -ForegroundColor Yellow
+    # This command actually starts a lightweight VM, so it also validates nested virtualization.
     $installOutput = wsl --install -d Ubuntu-24.04 --no-launch 2>&1
     if ($LASTEXITCODE -ne 0 -or $installOutput -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform") {
         Show-NestedVirtualizationHelp
