@@ -87,9 +87,15 @@ $nugetPath = Ensure-NuGet
 Write-Host "  NuGet available at: $nugetPath" -ForegroundColor Green
 
 # CppWinRT is only distributed via NuGet, not winget.
-Write-Host "  Installing CppWinRT 2.0.210806.1 via NuGet in project root..." -ForegroundColor Yellow
+Write-Host "  Installing CppWinRT 2.0.210806.1 via NuGet..." -ForegroundColor Yellow
 $projectRoot = Split-Path -Parent $PSScriptRoot
-& $nugetPath sources add -Name "nuget.org" -Source "https://api.nuget.org/v3/index.json" 2>$null | Out-Null
+
+# Ensure nuget.org source exists without erroring if already present.
+$sourcesList = & $nugetPath sources list 2>$null | Out-String
+if ($sourcesList -notmatch "nuget\.org") {
+    & $nugetPath sources add -Name "nuget.org" -Source "https://api.nuget.org/v3/index.json" 2>$null | Out-Null
+}
+
 Push-Location $projectRoot
 try {
     & $nugetPath install Microsoft.Windows.CppWinRT -Version 2.0.210806.1 -OutputDirectory "$env:USERPROFILE\.nuget\packages" 2>$null | Out-Null
