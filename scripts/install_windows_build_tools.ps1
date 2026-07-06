@@ -1,5 +1,7 @@
 # Stack Wallet Windows Host Bootstrap
-# Run from an elevated PowerShell (aka as Administrator) in the project root:
+# Run from an elevated PowerShell (aka as Administrator), either from the project
+# root or standalone on a fresh machine (this script installs Git itself, so it
+# can be downloaded and run before the repository is cloned):
 #   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 #   .\scripts\install_windows_build_tools.ps1
 # Reboot after completion.
@@ -19,17 +21,22 @@ function Show-NestedVirtualizationHelp {
     Write-Host ""
     Write-Host "  If you are running Windows in a virtual machine (Parallels, VMware, VirtualBox, UTM, Hyper-V, etc.)," -ForegroundColor Yellow
     Write-Host "  you must enable NESTED VIRTUALIZATION in your hypervisor settings, then re-run this script:" -ForegroundColor Yellow
-    Write-Host "    - UTM (Apple Silicon Mac): VM Settings > System > Use 'Apple Virtualization' engine (not QEMU)." -ForegroundColor Yellow
-    Write-Host "      Apple Virtualization provides the nested virtualization WSL2 needs." -ForegroundColor Yellow
-    Write-Host "    - Parallels Desktop: VM Configure > Hardware > CPU & Memory > Advanced > 'Nested Virtualization'" -ForegroundColor Yellow
-    Write-Host "    - VMware Fusion: VM Settings > Processors & Memory > Advanced > 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
-    Write-Host "    - VirtualBox: VM Settings > System > Acceleration > 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
-    Write-Host "    - Hyper-V host: Set-VMProcessor -VMName 'YourVM' -ExposeVirtualizationExtensions `$true" -ForegroundColor Yellow
+    Write-Host "    - Virtual machine on Apple Silicon (UTM, Parallels Desktop, VMware Fusion):" -ForegroundColor Yellow
+    Write-Host "      Windows 11 ARM can run, but WSL2 is NOT SUPPORTED. These hypervisors do not expose" -ForegroundColor Yellow
+    Write-Host "      nested virtualization to a Windows 11 ARM guest on Apple Silicon, so Hyper-V /" -ForegroundColor Yellow
+    Write-Host "      Virtual Machine Platform / WSL2 cannot run. This is not a Windows config issue." -ForegroundColor Yellow
+    Write-Host "    - Intel Mac running a Windows VM: enable nested virtualization in your hypervisor:" -ForegroundColor Yellow
+    Write-Host "        VirtualBox: VM Settings > System > Acceleration > 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
+    Write-Host "        VMware Fusion: VM Settings > Processors & Memory > Advanced > 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
+    Write-Host "        Hyper-V host: Set-VMProcessor -VMName 'YourVM' -ExposeVirtualizationExtensions `$true" -ForegroundColor Yellow
+    Write-Host "    - Physical Windows PC: reboot into UEFI/BIOS and enable virtualization" -ForegroundColor Yellow
+    Write-Host "      (Intel VT-x / AMD-V / SVM)." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "  If this is physical hardware:" -ForegroundColor Yellow
-    Write-Host "    1. Reboot into UEFI/BIOS and enable virtualization (Intel VT-x / AMD-V / SVM)." -ForegroundColor Yellow
-    Write-Host "    2. In Windows run: dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart" -ForegroundColor Yellow
-    Write-Host "    3. Reboot Windows and re-run this script." -ForegroundColor Yellow
+    Write-Host "  If you are on an Apple Silicon Mac, the Windows build cannot be done in a VM." -ForegroundColor Red
+    Write-Host "  Instead, build the native macOS version of Stack Wallet:" -ForegroundColor Yellow
+    Write-Host "    cd /path/to/stack_wallet" -ForegroundColor Yellow
+    Write-Host "    make build-macos" -ForegroundColor Yellow
+    Write-Host "  Or use a physical Windows PC / Intel Mac for the Windows build." -ForegroundColor Yellow
 }
 
 function Enable-WslFeature {
@@ -47,6 +54,30 @@ function Enable-WslFeature {
         Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart | Out-Null
     }
 }
+
+Write-Host "[0/9] Installing base prerequisites (Git, Python, GNU Make)..." -ForegroundColor Yellow
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    winget install Git.Git --accept-source-agreements --accept-package-agreements
+    Write-Host "  Git installed (includes Git Bash, required to run make targets)." -ForegroundColor Green
+} else {
+    Write-Host "  Git already installed." -ForegroundColor Green
+}
+# Fresh Windows 11 ships a Microsoft Store alias stub named python.exe in WindowsApps
+# which is not a real interpreter; ignore it when checking.
+$pythonReal = Get-Command python -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch "WindowsApps" }
+if (-not $pythonReal) {
+    winget install Python.Python.3.12 --accept-source-agreements --accept-package-agreements
+    Write-Host "  Python 3.12 installed (provides pip for the Meson step)." -ForegroundColor Green
+} else {
+    Write-Host "  Python already installed: $($pythonReal.Source)" -ForegroundColor Green
+}
+if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
+    winget install ezwinports.make --accept-source-agreements --accept-package-agreements
+    Write-Host "  GNU Make installed (run 'make build-windows' from Git Bash)." -ForegroundColor Green
+} else {
+    Write-Host "  Make already installed." -ForegroundColor Green
+}
+Refresh-Path
 
 Write-Host "[1/9] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
 try {
@@ -223,7 +254,8 @@ Refresh-Path
 Write-Host "[9/9] Installing Meson..." -ForegroundColor Yellow
 $mesonInstalled = Get-Command meson -ErrorAction SilentlyContinue
 if (-not $mesonInstalled) {
-    pip install meson
+    python -m pip install --upgrade pip
+    python -m pip install meson
     Write-Host "  Meson installed." -ForegroundColor Green
 } else {
     Write-Host "  Meson already installed." -ForegroundColor Green
@@ -250,6 +282,9 @@ function Test-Tool {
     }
 }
 
+Test-Tool "Git" "git"
+Test-Tool "Python" "python"
+Test-Tool "Make" "make"
 Test-Tool "Flutter" "flutter"
 Test-Tool "Dart" "dart"
 Test-Tool "Rust" "rustc"
@@ -270,3 +305,7 @@ Write-Host "After reboot, run the WSL setup from inside WSL:" -ForegroundColor C
 Write-Host "  wsl -d Ubuntu-24.04"
 Write-Host "  cd /mnt/c/path/to/stack_wallet/scripts/windows"
 Write-Host "  chmod +x setup_wsl.sh && ./setup_wsl.sh"
+Write-Host ""
+Write-Host "Then build from Git Bash (not PowerShell/cmd; make targets need a POSIX shell):" -ForegroundColor Cyan
+Write-Host "  cd /c/path/to/stack_wallet"
+Write-Host "  make build-windows VERSION=x.y.z BUILD_NUM=nnn"

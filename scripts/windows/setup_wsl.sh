@@ -54,14 +54,20 @@ fi
 echo "--- Adding Rust Windows GNU target..."
 rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
 
-# --- Go ---
+# --- Go (>= 1.24 required for mwebd build support; Ubuntu 24.04 apt ships 1.22, too old) ---
 echo "--- Installing Go..."
-if ! command -v go >/dev/null 2>&1; then
-  echo "[WARN] Go not found. Install Go manually: https://go.dev/doc/install"
-  echo "  Expected version: >= 1.24 for mwebd build support."
-else
-  echo "Go $(go version) found."
+GO_VERSION=1.24.13
+if ! command -v go >/dev/null 2>&1 && [ ! -x /usr/local/go/bin/go ]; then
+  curl -fsSLO "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+  sudo rm -rf /usr/local/go
+  sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+  rm -f "go${GO_VERSION}.linux-amd64.tar.gz"
 fi
+if ! command -v go >/dev/null 2>&1; then
+  echo 'export PATH=$PATH:/usr/local/go/bin' >> "$HOME/.bashrc"
+  export PATH="$PATH:/usr/local/go/bin"
+fi
+go version
 
 # --- cargo-ndk ---
 echo "--- Installing cargo-ndk..."

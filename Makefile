@@ -45,7 +45,7 @@ export SCCACHE_CACHE_SIZE
 endif
 
 .PHONY: help check-reqs check-reqs-macos check-reqs-windows check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
-	build-linux build-macos build-ios build-android build-windows download-windows \
+	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows \
 	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-macos-env \
 	test-mwc
 
@@ -183,10 +183,11 @@ patch-submodules: ## Apply portability patches to submodules
 	@sed -i.bak 's|cbindgen --config cbindgen.toml --crate epic-cash-wallet --output target/epic_cash_wallet.h|cbindgen --config cbindgen.toml --crate epic-cash-wallet --output target/epic_cash_wallet.h \&\& cp target/epic_cash_wallet.h libepic_cash_wallet.h|g' crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh 2>/dev/null || true
 	@echo "Fixing Frostdart binary path..."
 	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec perl -0777 -i.bak -pe 's|^.*dart\s+build_|dart build_|mg' {} + 2>/dev/null || true
-	@# Frostdart Linux/Windows scripts pin an old +1.71.0; MSRV is 1.70, use default toolchain
-	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/cargo +1.71.0 build/cargo build/g' {} + 2>/dev/null || true
-	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/rustup +1.71.0 target add/rustup target add/g' {} + 2>/dev/null || true
-	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/cargo +1.71.0 build/cargo build/g' {} + 2>/dev/null || true
+	@# Frostdart scripts pin a specific toolchain (+1.71.0 today, +1.89.0 on newer branches); strip any pin, use default toolchain (MSRV is 1.70)
+	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/cargo +[0-9.][0-9.]* build/cargo build/g' {} + 2>/dev/null || true
+	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/rustup +[0-9.][0-9.]* target add/rustup target add/g' {} + 2>/dev/null || true
+	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/cargo +[0-9.][0-9.]* build/cargo build/g' {} + 2>/dev/null || true
+	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/rustup +[0-9.][0-9.]* target add/rustup target add/g' {} + 2>/dev/null || true
 	@echo "Fixing frostdart ARM copy path in build_all.bat..."
 	@sed -i.bak 's|copy "..\\target\\x86_64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|copy "..\\target\\aarch64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|g' crypto_plugins/frostdart/scripts/windows/build_all.bat 2>/dev/null || true
 	@echo "Normalizing Linux script shebangs for NixOS..."
@@ -514,6 +515,16 @@ prebuild-windows: ## Run Windows prebuild config (PowerShell)
 	@echo "--- Running Windows prebuild..."
 	@powershell -ExecutionPolicy Bypass -File scripts/prebuild.ps1
 
+patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.85.1 (Windows host, run after 'flutter pub get')
+	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
+	@XELIS_MANIFEST="$$(find "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
+	if [ -n "$$XELIS_MANIFEST" ]; then \
+		rustup run 1.85.1 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
+	else \
+		echo "[WARN] xelis-flutter-ffi not found in pub cache; xelis patch may be a no-op."; \
+	fi
+	@bash scripts/patches/xelis_1_85_1_compat.sh
+
 build-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Build Windows Release
 	@echo "--- Configuring project and building WSL-only plugins (libepiccash, libmwc)..."
 	@wsl bash -c "cd $(CURDIR)/scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i"
@@ -521,7 +532,8 @@ build-windows: check-reqs check-reqs-windows init patch-submodules prebuild-wind
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(DART) run coinlib:build_windows
-	@crypto_plugins\frostdart\scripts\windows\build_all.bat
+	@cd crypto_plugins/frostdart/scripts/windows && cmd //c build_all.bat
+	@$(MAKE) patch-xelis-windows
 	@echo "--- Compiling app..."
 	@$(FLUTTER) build windows --release
 
@@ -531,5 +543,6 @@ download-windows: check-reqs check-reqs-windows init patch-submodules prebuild-w
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(DART) run coinlib:build_windows
+	@$(MAKE) patch-xelis-windows
 	@echo "--- Compiling app..."
 	@$(FLUTTER) build windows --release
