@@ -95,13 +95,27 @@ try {
 # TODO @parasew: check for Ubuntu 26 compat later
 Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
 
-$distros = (wsl -l -q 2>$null) | Where-Object { $_ -match "Ubuntu-24.04" }
-if ($distros) {
+# WSL_UTF8=1 makes wsl.exe emit UTF-8 instead of UTF-16LE, so -match works on
+# redirected output.
+$env:WSL_UTF8 = "1"
+
+# Probe wsl.exe via cmd so its stderr never reaches the PowerShell error stream:
+# under Windows PowerShell 5.1 with $ErrorActionPreference = "Stop", redirected
+# native stderr (2>$null) is converted into a terminating NativeCommandError,
+# which aborted this script on machines where WSL was never installed.
+$wslListOutput = cmd /c "wsl.exe -l -q 2>nul"
+$wslFunctional = ($LASTEXITCODE -eq 0)
+
+if ($wslFunctional -and ($wslListOutput -match "Ubuntu-24.04")) {
     Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
 } else {
+    if (-not $wslFunctional) {
+        Write-Host "  WSL not yet installed; enabling WSL2 features first..." -ForegroundColor Yellow
+        Enable-WslFeature
+    }
     Write-Host "  Installing Ubuntu 24.04 in WSL2..." -ForegroundColor Yellow
     # This command actually starts a lightweight VM, so it also validates nested virtualization.
-    $installOutput = wsl --install -d Ubuntu-24.04 --no-launch 2>&1
+    $installOutput = cmd /c "wsl.exe --install -d Ubuntu-24.04 --no-launch 2>&1"
     if ($LASTEXITCODE -ne 0 -or $installOutput -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform") {
         Show-NestedVirtualizationHelp
         throw "WSL2 virtualization prerequisite missing."
