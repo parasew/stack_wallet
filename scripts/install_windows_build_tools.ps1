@@ -136,6 +136,49 @@ if (-not $vsInstalled) {
     Write-Host "  Visual Studio 2022 already installed." -ForegroundColor Green
 }
 
+# Verify the C++ workload actually landed, regardless of which branch ran above.
+# winget reports success based on the VS bootstrapper's exit, not the component
+# installer's, so a bare VS without the NativeDesktop workload can pass silently
+# (observed on a fresh Windows 11 machine). vcvars64.bat presence is also not a
+# reliable proxy for the workload.
+$vswhereExe = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+$vsSetupExe = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+$vsCommunityPath = "C:\Program Files\Microsoft Visual Studio\2022\Community"
+
+function Test-VsCppWorkload {
+    if (-not (Test-Path $vswhereExe)) { return $false }
+    $out = & $vswhereExe -latest -products * -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath
+    return -not [string]::IsNullOrWhiteSpace("$out")
+}
+
+if (-not (Test-VsCppWorkload)) {
+    Write-Host "  C++ workload (NativeDesktop) missing; adding via VS Installer (10-30 min, no UI)..." -ForegroundColor Yellow
+    # NOTE 1: '--wait' is a VS *bootstrapper* flag; the installed setup.exe
+    # rejects it with exit code 87 ("Option 'wait' is unknown").
+    # NOTE 2: setup.exe is a GUI-subsystem binary, so this call returns
+    # immediately; completion is detected by polling vswhere below, not by
+    # exit code. This exact invocation is field-tested.
+    $vsModifyArgs = @(
+        'modify',
+        '--installPath', $vsCommunityPath,
+        '--add', 'Microsoft.VisualStudio.Workload.NativeDesktop',
+        '--includeRecommended',
+        '--quiet',
+        '--norestart'
+    )
+    & $vsSetupExe @vsModifyArgs
+    $vsDeadline = (Get-Date).AddMinutes(40)
+    while (-not (Test-VsCppWorkload) -and (Get-Date) -lt $vsDeadline) {
+        Write-Host "  Waiting for VS Installer to finish adding the workload..."
+        Start-Sleep -Seconds 30
+    }
+}
+if (Test-VsCppWorkload) {
+    Write-Host "  C++ workload (NativeDesktop) verified via vswhere." -ForegroundColor Green
+} else {
+    Write-Host "  [WARN] NativeDesktop workload still not detected. Open the Visual Studio Installer GUI, add 'Desktop development with C++', then re-run this script." -ForegroundColor Red
+}
+
 # --- 4. NuGet + CppWinRT ---
 Write-Host "[4/9] Installing NuGet and CppWinRT 2.0.210806.1..." -ForegroundColor Yellow
 
