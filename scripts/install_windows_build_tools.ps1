@@ -214,6 +214,20 @@ if (-not $flutterInstalled) {
 }
 Refresh-Path
 
+# --- 5b. Flutter warm-up ---
+# The first flutter invocation downloads the matching Dart SDK into
+# bin/cache and builds the flutter_tools snapshot. Do it here, visibly,
+# instead of letting it surprise the first 'make build-windows'. Also
+# pre-download the Windows desktop build artifacts.
+if (Get-Command flutter -ErrorAction SilentlyContinue) {
+    Write-Host "  Warming up Flutter (first run downloads the Dart SDK and builds the tool)..." -ForegroundColor Yellow
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    flutter --version
+    flutter precache --windows
+    $ErrorActionPreference = $prevEAP
+    Write-Host "  Flutter warm-up done." -ForegroundColor Green
+}
+
 # --- 6. Rust (single toolchain: 1.85.1) ---
 Write-Host "[6/9] Installing Rust 1.85.1 + MSVC target..." -ForegroundColor Yellow
 $rustupInstalled = Get-Command rustup -ErrorAction SilentlyContinue
@@ -309,6 +323,28 @@ Test-Tool "Go" "go"
 Test-Tool "CMake" "cmake"
 Test-Tool "Ninja" "ninja"
 Test-Tool "Meson" "meson"
+
+# Execution check: actually run the tools, not just resolve them on PATH.
+# EAP is relaxed because under PowerShell 5.1 + ErrorActionPreference=Stop,
+# a 2>&1 redirect turns any native stderr output into a terminating error.
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+Write-Host ""
+Write-Host "  Tool versions (execution check):" -ForegroundColor Cyan
+foreach ($probe in @(
+    @{ n = "flutter"; a = "--version" },
+    @{ n = "dart";    a = "--version" },
+    @{ n = "ninja";   a = "--version" },
+    @{ n = "make";    a = "--version" },
+    @{ n = "go";      a = "version" }
+)) {
+    if (Get-Command $probe.n -ErrorAction SilentlyContinue) {
+        $v = (& $probe.n $probe.a 2>&1 | Select-Object -First 1)
+        Write-Host "    $($probe.n): $v"
+    } else {
+        Write-Host "    $($probe.n): not on PATH in this session"
+    }
+}
+$ErrorActionPreference = $prevEAP
 
 if ($allOk) {
     Write-Host "`n=== All tools verified! REBOOT YOUR MACHINE before building. ===" -ForegroundColor Green
