@@ -155,9 +155,12 @@ if (-not (Test-VsCppWorkload)) {
     Write-Host "  C++ workload (NativeDesktop) missing; adding via VS Installer (10-30 min, no UI)..." -ForegroundColor Yellow
     # NOTE 1: '--wait' is a VS *bootstrapper* flag; the installed setup.exe
     # rejects it with exit code 87 ("Option 'wait' is unknown").
-    # NOTE 2: setup.exe is a GUI-subsystem binary, so this call returns
-    # immediately; completion is detected by polling vswhere below, not by
-    # exit code. This exact invocation is field-tested.
+    # NOTE 2: setup.exe is a GUI-subsystem binary, so a bare call returns the
+    # prompt immediately. Piping to Out-Null holds the pipeline open until the
+    # process exits, giving a deterministic wait: the PowerShell equivalent of
+    # 'start /wait', which is Microsoft's documented pattern for automating
+    # setup.exe. Exit codes: 0 = success, 3010 = success but reboot required.
+    # https://learn.microsoft.com/visualstudio/install/use-command-line-parameters-to-install-visual-studio
     $vsModifyArgs = @(
         'modify',
         '--installPath', $vsCommunityPath,
@@ -166,11 +169,11 @@ if (-not (Test-VsCppWorkload)) {
         '--quiet',
         '--norestart'
     )
-    & $vsSetupExe @vsModifyArgs
-    $vsDeadline = (Get-Date).AddMinutes(40)
-    while (-not (Test-VsCppWorkload) -and (Get-Date) -lt $vsDeadline) {
-        Write-Host "  Waiting for VS Installer to finish adding the workload..."
-        Start-Sleep -Seconds 30
+    & $vsSetupExe @vsModifyArgs | Out-Null
+    switch ($LASTEXITCODE) {
+        0       { Write-Host "  VS Installer finished (exit 0)." -ForegroundColor Green }
+        3010    { Write-Host "  VS Installer finished; reboot required (exit 3010)." -ForegroundColor Yellow }
+        default { Write-Host "  [WARN] VS Installer exit code $($LASTEXITCODE); see the error-codes table in the Microsoft docs linked above." -ForegroundColor Red }
     }
 }
 if (Test-VsCppWorkload) {
