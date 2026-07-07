@@ -191,8 +191,10 @@ if (-not $flutterInstalled) {
 
     Write-Host "  Flutter not found. Downloading from $flutterUrl ..." -ForegroundColor Yellow
     try {
-        if (Test-Path $flutterZip) { Remove-Item $flutterZip -Force }
-        Invoke-WebRequest -Uri $flutterUrl -OutFile $flutterZip -ErrorAction Stop
+        # curl.exe ships with Windows 11 and handles a ~1 GB download far more
+        # reliably than Invoke-WebRequest (retries, resume of partial files).
+        & "$env:SystemRoot\System32\curl.exe" -L --fail --retry 5 --retry-delay 5 -C - -o $flutterZip $flutterUrl
+        if ($LASTEXITCODE -ne 0) { throw "curl exited with code $LASTEXITCODE after retries" }
 
         if (Test-Path $flutterDir) { Remove-Item $flutterDir -Recurse -Force }
         Expand-Archive -Path $flutterZip -DestinationPath "C:\" -Force
@@ -260,7 +262,7 @@ Refresh-Path
 Write-Host "[8/9] Installing CMake and Ninja..." -ForegroundColor Yellow
 winget install Kitware.CMake --accept-source-agreements --accept-package-agreements 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Host "  CMake already installed or install skipped." -ForegroundColor Yellow }
-winget install NinjaBuild.Ninja --accept-source-agreements --accept-package-agreements 2>$null
+winget install -e --id Ninja-build.Ninja --accept-source-agreements --accept-package-agreements 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Host "  Ninja already installed or install skipped." -ForegroundColor Yellow }
 Refresh-Path
 
