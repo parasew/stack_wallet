@@ -7,7 +7,7 @@ git reset --hard
 if exist "build" rmdir /s /q "build"
 cmake -G "Visual Studio 17 2022" -A x64 -S . -B build -DSECP256K1_ENABLE_MODULE_RECOVERY=ON
 cd build
-cmake --build .
+cmake --build . --config Release
 if not exist "..\..\..\..\..\build\" mkdir "..\..\..\..\..\build\"
-xcopy bin\Debug\libsecp256k1-2.dll "..\..\..\..\..\build\secp256k1.dll" /Y
+xcopy bin\Release\libsecp256k1-2.dll "..\..\..\..\..\build\secp256k1.dll" /Y
 cd ..\..\..\

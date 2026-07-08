@@ -513,7 +513,7 @@ build-android: check-reqs init ## Build Android APK
 
 prebuild-windows: ## Run Windows prebuild config (PowerShell)
 	@echo "--- Running Windows prebuild..."
-	@powershell -ExecutionPolicy Bypass -File scripts/prebuild.ps1
+	@cd scripts && powershell -ExecutionPolicy Bypass -File prebuild.ps1
 
 patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.85.1 (Windows host, run after 'flutter pub get')
 	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
