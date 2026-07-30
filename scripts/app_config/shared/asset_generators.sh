@@ -14,16 +14,16 @@ pushd "${APP_PROJECT_ROOT_DIR}"
 YAML_FILE="${APP_PROJECT_ROOT_DIR}/scripts/app_config/platforms/${APP_BUILD_PLATFORM}/flutter_launcher_icons.yaml"
 
 if [[ "${APP_BUILD_PLATFORM}" = 'windows' ]]; then
-  cmd.exe /c flutter pub get
-  if command -v cygpath >/dev/null 2>&1; then
-    WIN_PATH_VERSION=$(cygpath -w "${YAML_FILE}")
-  else
-    WIN_PATH_VERSION=$(wslpath -w "${YAML_FILE}")
-  fi
+  command -v cygpath >/dev/null 2>&1 || {
+    echo "[ERROR] cygpath is required for Windows builds. Run make from Git Bash." >&2
+    exit 1
+  }
+  MSYS2_ARG_CONV_EXCL='*' cmd.exe /c flutter pub get
+  WIN_PATH_VERSION=$(cygpath -w "${YAML_FILE}")
   # FIX: Changed dart run to flutter pub run
-  cmd.exe /c flutter pub run flutter_launcher_icons -f "${WIN_PATH_VERSION}"
+  MSYS2_ARG_CONV_EXCL='*' cmd.exe /c flutter pub run flutter_launcher_icons -f "${WIN_PATH_VERSION}"
   # not needed in windows
-# cmd.exe /c flutter pub run flutter_native_splash:create
+# MSYS2_ARG_CONV_EXCL='*' cmd.exe /c flutter pub run flutter_native_splash:create
 else
   flutter pub get
   # FIX: Changed dart run to flutter pub run

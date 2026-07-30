@@ -13,8 +13,15 @@ DART_BIN     := $(if $(and $(DART),$(wildcard $(DART))),$(DART),$(shell command 
 FLUTTER      := $(FLUTTER_BIN)
 DART         := $(DART_BIN)
 APP_PROJECT_ROOT_DIR := $(CURDIR)
+# Fail fast when make is invoked from PowerShell/cmd: every recipe needs a
+# POSIX shell. Detection: cmd's echo keeps surrounding quotes, sh strips them,
+# so this $(shell) probe reveals which shell make actually found.
+ifeq ($(OS),Windows_NT)
+ifneq ($(shell echo "posix"),posix)
+$(error No POSIX shell found - make was started from PowerShell or cmd. Open 'Git Bash' instead and run: cd /c/path/to/stack_wallet && make <target>)
+endif
+endif
 # Platform detection: auto-detect from uname, or set PLATFORM=windows manually.
-# On Windows native (cmd.exe), set: make PLATFORM=windows build-windows
 PLATFORM       ?= $(shell uname -s 2>/dev/null || echo Windows)
 PUB_CACHE    ?= $(APP_PROJECT_ROOT_DIR)/.pub-cache
 PROTOC_PATH  := $(shell which protoc 2>/dev/null)
@@ -29,6 +36,14 @@ RUSTC_WRAPPER         ?= $(if $(filter 1,$(SCCACHE)),$(shell command -v sccache 
 SCCACHE_DIR           ?= $(APP_PROJECT_ROOT_DIR)/.sccache-cache
 SCCACHE_CACHE_SIZE    ?= 10G
 SKIP_NATIVE                  ?= 0
+# MSYS2 (native Windows plugin builds). Override MSYS2_ROOT for non-default installs.
+MSYS2_ROOT   ?= C:/msys64
+MSYS2_BASH   ?= $(MSYS2_ROOT)/usr/bin/bash.exe
+MSYS2_RUN     = MSYSTEM=MINGW64 MSYS2_PATH_TYPE=inherit CHERE_INVOKED=1 "$(MSYS2_BASH)" -l -c
+# C compiler for the cgo build of mwebd.exe (see tool/build_standalone_mwebd_windows.dart).
+MWEBD_CC     ?= $(MSYS2_ROOT)/mingw64/bin/gcc.exe
+# download-windows fetches the prebuilt mwebd.exe by default (MWEBD_FETCH=0 to build from source).
+MWEBD_FETCH  ?= 1
 MACOS_ENV_UNSET = -u LD -u LDFLAGS -u NIX_LDFLAGS -u NIX_CFLAGS_LINK \
 	-u CFLAGS -u CXXFLAGS -u CPPFLAGS \
 	-u SDKROOT -u BINDGEN_EXTRA_CLANG_ARGS \
@@ -44,14 +59,14 @@ export SCCACHE_DIR
 export SCCACHE_CACHE_SIZE
 endif
 
-.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
-	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows \
+.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
+	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows patch-flutter-mwebd-windows \
 	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-macos-env \
 	test-mwc
 
 help: ## Show available commands
 	@echo "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-20s %s\n", $$1, $$2}'
 
 # --- PREREQUISITES ---
 
@@ -62,6 +77,9 @@ check-reqs: ## Verify essential build tools
 	@command -v rustup >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup not installed."; exit 1; }
 	@rustup which rustc >/dev/null 2>&1 || { echo >&2 "[ERROR] rustc toolchain not available via rustup."; exit 1; }
 	@rustup which cargo >/dev/null 2>&1 || { echo >&2 "[ERROR] cargo toolchain not available via rustup."; exit 1; }
+	@# `rustup which cargo` resolves a toolchain path even when no shim is on PATH,
+	@# but the plugin build scripts invoke bare `cargo` — verify that separately.
+	@command -v cargo >/dev/null 2>&1 || [ -x "$$HOME/.cargo/bin/cargo" ] || [ -x "$(PROJECT_CARGO_HOME)/bin/cargo" ] || { echo >&2 "[ERROR] 'cargo' is not on PATH (rustup shims missing from ~/.cargo/bin). Run 'rustup-init -y', then open a new terminal."; exit 1; }
 	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.85.1 toolchain not available."; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
@@ -109,6 +127,9 @@ ifeq ($(PLATFORM),Darwin)
 	@echo "Checking macOS-specific tools in PATH..."
 	@command -v pod >/dev/null 2>&1 || { echo >&2 "[ERROR] CocoaPods (pod) not installed."; exit 1; }
 	@command -v xcodebuild >/dev/null 2>&1 || { echo >&2 "[ERROR] xcodebuild not available."; exit 1; }
+	@# Both crypto plugin builds generate their C headers with cbindgen. Without it
+	@# they die mid-build and the failure only shows up as undefined symbols at link time.
+	@command -v cbindgen >/dev/null 2>&1 || [ -x "$(PROJECT_CARGO_HOME)/bin/cbindgen" ] || [ -x "$$HOME/.cargo/bin/cbindgen" ] || { echo >&2 "[ERROR] cbindgen not installed (required to generate the plugin C headers). Run: cargo install cbindgen"; exit 1; }
 	@echo "[OK] macOS-specific toolchain is available."
 else
 	@echo "[ERROR] check-reqs-macos is macOS-only."
@@ -138,7 +159,6 @@ endif
 
 check-reqs-windows: ## Verify Windows host build requirements
 	@echo "Checking Windows prerequisites..."
-	@command -v wsl >/dev/null 2>&1 || command -v wsl.exe >/dev/null 2>&1 || { echo >&2 "[ERROR] WSL not found. Run 'wsl --install -d Ubuntu-24.04'."; exit 1; }
 	@command -v flutter >/dev/null 2>&1 || { echo >&2 "[ERROR] Flutter not installed. Run 'scripts/install_windows_build_tools.ps1'."; exit 1; }
 	@command -v dart >/dev/null 2>&1 || { echo >&2 "[ERROR] Dart not installed."; exit 1; }
 	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.85.1 toolchain not installed."; exit 1; }
@@ -147,6 +167,13 @@ check-reqs-windows: ## Verify Windows host build requirements
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v ninja >/dev/null 2>&1 || { echo >&2 "[ERROR] Ninja not installed."; exit 1; }
 	@echo "[OK] Windows host requirements found!"
+
+check-msys2: ## Verify MSYS2/MinGW environment (needed to build the windows-gnu plugins from source)
+	@echo "Checking MSYS2 prerequisites..."
+	@[ -x "$(MSYS2_BASH)" ] || { echo >&2 "[ERROR] MSYS2 not found at $(MSYS2_BASH). Install with 'winget install MSYS2.MSYS2', then run scripts/windows/setup_msys2.sh. For non-default installs, pass MSYS2_ROOT=<path>."; exit 1; }
+	@$(MSYS2_RUN) "command -v x86_64-w64-mingw32-gcc >/dev/null" || { echo >&2 "[ERROR] MinGW-w64 gcc missing in MSYS2. Run scripts/windows/setup_msys2.sh."; exit 1; }
+	@rustup run 1.85.1 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-gnu" || { echo >&2 "[ERROR] x86_64-pc-windows-gnu target not added to Rust 1.85.1. Run: rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1"; exit 1; }
+	@echo "[OK] MSYS2 requirements found!"
 
 # --- MAINTENANCE ---
 
@@ -189,7 +216,7 @@ patch-submodules: ## Apply portability patches to submodules
 	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/cargo +[0-9.][0-9.]* build/cargo build/g' {} + 2>/dev/null || true
 	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/rustup +[0-9.][0-9.]* target add/rustup target add/g' {} + 2>/dev/null || true
 	@echo "Fixing frostdart ARM copy path in build_all.bat..."
-	@sed -i.bak 's|copy "..\\target\\x86_64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|copy "..\\target\\aarch64-pc-windows-msvc\\release\\hrf_api.dll" "%ROOT_DIR%\\scripts\\windows\\build\\frostdart.dll"|g' crypto_plugins/frostdart/scripts/windows/build_all.bat 2>/dev/null || true
+	@sed -i.bak '/if "%IS_ARM%"=="true" (/,/) else (/ s|..\\target\\x86_64-pc-windows-msvc\\release\\hrf_api.dll|..\\target\\aarch64-pc-windows-msvc\\release\\hrf_api.dll|' crypto_plugins/frostdart/scripts/windows/build_all.bat 2>/dev/null || true
 	@echo "Normalizing Linux script shebangs for NixOS..."
 	@find crypto_plugins -path "*/scripts/linux/*.sh" -type f -exec sed -i.bak '1s|^#!/bin/bash$$|#!/usr/bin/env bash|' {} + 2>/dev/null || true
 	@echo "Disabling strict Rust checks..."
@@ -346,7 +373,7 @@ macos-build-native:
 		RANLIB="/usr/bin/ranlib" \
 		SDKROOT="$$(xcrun --sdk macosx --show-sdk-path)" \
 		PROTOC="$(PROTOC_PATH)" \
-		PATH="$(PROJECT_CARGO_HOME)/bin:$$PATH" \
+		PATH="$(PROJECT_CARGO_HOME)/bin:$$PATH:$$HOME/.cargo/bin" \
 		bash scripts/macos/build_all.sh
 	@rm -rf build/secp256k1
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
@@ -517,7 +544,7 @@ prebuild-windows: ## Run Windows prebuild config (PowerShell)
 
 patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.85.1 (Windows host, run after 'flutter pub get')
 	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
-	@XELIS_MANIFEST="$$(find "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
+	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
 	if [ -n "$$XELIS_MANIFEST" ]; then \
 		rustup run 1.85.1 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
 	else \
@@ -525,23 +552,30 @@ patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust
 	fi
 	@bash scripts/patches/xelis_1_85_1_compat.sh
 
-build-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Build Windows Release
-	@echo "--- Configuring project and building WSL-only plugins (libepiccash, libmwc)..."
-	@wsl bash -c "cd $(CURDIR)/scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i"
-	@wsl bash -c "cd $(CURDIR)/scripts/windows && bash build_wsl_plugins_only.sh"
+patch-flutter-mwebd-windows: ## Strip windows ffiPlugin from cached flutter_mwebd (Stack Wallet uses mwebd.exe instead)
+	@bash scripts/windows/patch_flutter_mwebd_pubspec.sh
+	@$(FLUTTER) pub get
+
+build-windows: check-reqs check-reqs-windows check-msys2 init patch-submodules prebuild-windows ## Build Windows Release
+	@echo "--- Configuring project..."
+	@cd scripts && MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i
+	@echo "--- Building MinGW plugins (libepiccash, libmwc) via MSYS2..."
+	@$(MSYS2_RUN) "cd '$(CURDIR)/scripts/windows' && bash build_msys2_plugins.sh"
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
+	@$(MAKE) patch-flutter-mwebd-windows
 	@$(DART) run coinlib:build_windows
-	@cd crypto_plugins/frostdart/scripts/windows && cmd //c build_all.bat
+	@cd crypto_plugins/frostdart/scripts/windows && env -u CC -u CXX -u AR -u RANLIB -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS -u IS_ARM cmd //c build_all.bat
 	@$(MAKE) patch-xelis-windows
 	@echo "--- Compiling app..."
 	@$(FLUTTER) build windows --release
 
-download-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Download prebuilt DLLs & build (faster, no WSL compilation)
+download-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Download prebuilt DLLs & build (faster, no plugin compilation)
 	@echo "--- Configuring project (download mode)..."
-	@wsl bash -c "cd $(CURDIR)/scripts && ./build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d"
+	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
+	@$(MAKE) patch-flutter-mwebd-windows
 	@$(DART) run coinlib:build_windows
 	@$(MAKE) patch-xelis-windows
 	@echo "--- Compiling app..."

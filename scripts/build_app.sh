@@ -2,7 +2,9 @@
 
 set -e
 
-source ./env.sh
+THIS_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/env.sh
+source "$THIS_SCRIPT_DIR/env.sh"
 
 APP_PLATFORMS=("android" "ios" "macos" "linux" "windows")
 APP_NAMED_IDS=("stack_wallet" "stack_duo" "campfire")
@@ -70,6 +72,16 @@ fi
 if [ -z "$APP_NAMED_ID" ]; then
   echo "Missing -a option"
   usage
+fi
+
+# Windows native dependencies are orchestrated by the Makefile. The old
+# implicit platform cross-build path has been removed.
+if [ "$APP_BUILD_PLATFORM" = "windows" ] && \
+   [ "$BUILD_CRYPTO_PLUGINS" -eq 0 ] && \
+   [ "$DOWNLOAD_CRYPTO_PLUGINS" -eq 0 ]; then
+  echo "Windows builds must select native-build or download mode." >&2
+  echo "Run 'make build-windows' (source build) or 'make download-windows'." >&2
+  exit 1
 fi
 
 # Keep macOS stack_wallet builds on the Makefile path so setup steps stay in one place.

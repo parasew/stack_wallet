@@ -295,8 +295,7 @@ jobs:
         run: flutter pub get
 
       # Stack Wallet uses mwebd.exe as a subprocess on Windows, not the FFI
-      # DLL, so we don't need libmwebd.dll. The upstream plugin's Windows
-      # build path requires WSL, which the GitHub runner lacks.
+      # DLL, so the upstream plugin's separate libmwebd.dll build is disabled.
       - name: Patch flutter_mwebd to skip Windows FFI build (CI workaround)
         run: |
           set -euo pipefail
@@ -1667,4 +1666,3 @@ jobs:
         with:
           name: stack_duo-appimage-x86_64-${{ steps.ver.outputs.version }}.AppImage
           path: stack_duo-appimage-x86_64-${{ steps.ver.outputs.version }}.AppImage
-

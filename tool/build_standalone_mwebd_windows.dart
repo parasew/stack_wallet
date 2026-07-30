@@ -93,9 +93,20 @@ Future<void> _buildFromSource(Directory projectToolDir) async {
     "${tempBuildDir.path}"
     "${Platform.pathSeparator}mwebd",
   );
-  final isCI = Platform.environment['CI'] == 'true';
   final Process build;
-  if (Platform.isWindows && isCI) {
+  if (Platform.isWindows) {
+    // Native build. cgo needs a C compiler: use MWEBD_CC when provided (the
+    // Makefile passes the MSYS2 MinGW gcc), otherwise fall back to whatever
+    // `gcc` is on PATH (e.g. GitHub CI runners). GOARCH is pinned to amd64 so
+    // an ARM64-native Go toolchain (Windows on ARM) still produces the x64
+    // mwebd.exe that matches the x64 MinGW compiler and app bundle.
+    final cc = Platform.environment["MWEBD_CC"];
+    final ccDir = cc != null && cc.isNotEmpty ? File(cc).parent.path : null;
+    final pathKey = Platform.environment.keys.firstWhere(
+      (key) => key.toUpperCase() == "PATH",
+      orElse: () => "PATH",
+    );
+    final inheritedPath = Platform.environment[pathKey] ?? "";
     build = await Process.start(
       "go",
       [
@@ -105,20 +116,16 @@ Future<void> _buildFromSource(Directory projectToolDir) async {
         "../mwebd.exe",
         "github.com/ltcmweb/mwebd/cmd/mwebd",
       ],
-      environment: {"CGO_ENABLED": "1"},
-      runInShell: true,
-      mode: ProcessStartMode.inheritStdio,
-    );
-  } else if (Platform.isWindows) {
-    build = await Process.start(
-      "wsl",
-      [
-        "bash",
-        "-l",
-        "-c",
-        "GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc "
-            "go build -v -o ../mwebd.exe github.com/ltcmweb/mwebd/cmd/mwebd",
-      ],
+      environment: {
+        "GOOS": "windows",
+        "GOARCH": "amd64",
+        "CGO_ENABLED": "1",
+        if (cc != null && cc.isNotEmpty) "CC": cc,
+        // MinGW gcc launches helper executables whose runtime DLLs live next
+        // to gcc.exe, so an absolute CC alone is not sufficient on Windows.
+        if (ccDir != null)
+          pathKey: inheritedPath.isEmpty ? ccDir : "$ccDir;$inheritedPath",
+      },
       runInShell: true,
       mode: ProcessStartMode.inheritStdio,
     );

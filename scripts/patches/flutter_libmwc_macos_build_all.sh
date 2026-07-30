@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+# cbindgen generates libmwc_wallet.h below; without it this build produces no
+# xcframework and the app only fails much later with undefined _mwc_* symbols.
+command -v cbindgen >/dev/null 2>&1 || {
+  echo "[ERROR] cbindgen not found in PATH. Install it with: cargo install cbindgen" >&2
+  exit 1
+}
+
 mkdir -p build
 echo ''$(git log -1 --pretty=format:"%H")' '$(date) >> build/git_commit_version.txt
 VERSIONS_FILE=../../lib/git_versions.dart

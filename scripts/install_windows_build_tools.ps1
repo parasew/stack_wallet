@@ -4,7 +4,8 @@
 # can be downloaded and run before the repository is cloned):
 #   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 #   .\scripts\install_windows_build_tools.ps1
-# Reboot after completion.
+# Reboot afterwards if Visual Studio was installed. No WSL2/virtualization is
+# required: the windows-gnu plugins build natively via MSYS2/MinGW-w64.
 
 $ErrorActionPreference = "Stop"
 
@@ -15,45 +16,11 @@ function Refresh-Path {
 
 Write-Host "=== Stack Wallet Windows Host Bootstrap ===" -ForegroundColor Cyan
 
-function Show-NestedVirtualizationHelp {
-    Write-Host ""
-    Write-Host "  [ERROR] WSL2 cannot start because virtualization / nested virtualization is not enabled." -ForegroundColor Red
-    Write-Host ""
-    Write-Host "  If you are running Windows in a virtual machine (Parallels, VMware, VirtualBox, UTM, Hyper-V, etc.)," -ForegroundColor Yellow
-    Write-Host "  you must enable NESTED VIRTUALIZATION in your hypervisor settings, then re-run this script:" -ForegroundColor Yellow
-    Write-Host "    - Virtual machine on Apple Silicon (UTM, Parallels Desktop, VMware Fusion):" -ForegroundColor Yellow
-    Write-Host "      Windows 11 ARM can run, but WSL2 is NOT SUPPORTED. These hypervisors do not expose" -ForegroundColor Yellow
-    Write-Host "      nested virtualization to a Windows 11 ARM guest on Apple Silicon, so Hyper-V /" -ForegroundColor Yellow
-    Write-Host "      Virtual Machine Platform / WSL2 cannot run. This is not a Windows config issue." -ForegroundColor Yellow
-    Write-Host "    - Intel Mac running a Windows VM: enable nested virtualization in your hypervisor:" -ForegroundColor Yellow
-    Write-Host "        VirtualBox: VM Settings > System > Acceleration > 'Nested VT-x/AMD-V'" -ForegroundColor Yellow
-    Write-Host "        VMware Fusion: VM Settings > Processors & Memory > Advanced > 'Virtualize Intel VT-x/EPT or AMD-V/RVI'" -ForegroundColor Yellow
-    Write-Host "        Hyper-V host: Set-VMProcessor -VMName 'YourVM' -ExposeVirtualizationExtensions `$true" -ForegroundColor Yellow
-    Write-Host "    - Physical Windows PC: reboot into UEFI/BIOS and enable virtualization" -ForegroundColor Yellow
-    Write-Host "      (Intel VT-x / AMD-V / SVM)." -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  If you are on an Apple Silicon Mac, the Windows build cannot be done in a VM." -ForegroundColor Red
-    Write-Host "  Instead, build the native macOS version of Stack Wallet:" -ForegroundColor Yellow
-    Write-Host "    cd /path/to/stack_wallet" -ForegroundColor Yellow
-    Write-Host "    make build-macos" -ForegroundColor Yellow
-    Write-Host "  Or use a physical Windows PC / Intel Mac for the Windows build." -ForegroundColor Yellow
-}
-
-function Enable-WslFeature {
-    # Make sure the WSL2 kernel / Virtual Machine Platform feature is enabled.
-    Write-Host "  Enabling WSL2 kernel features (Virtual Machine Platform, WSL)..." -ForegroundColor Yellow
-    try {
-        wsl --install --no-distribution 2>$null | Out-Null
-    } catch { }
-    $vmPlatform = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -ErrorAction SilentlyContinue
-    if ($vmPlatform -and $vmPlatform.State -ne "Enabled") {
-        Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All -NoRestart | Out-Null
-    }
-    $wslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -ErrorAction SilentlyContinue
-    if ($wslFeature -and $wslFeature.State -ne "Enabled") {
-        Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux -All -NoRestart | Out-Null
-    }
-}
+# MSYS2 provides the MinGW-w64 toolchain used to build the windows-gnu crypto
+# plugins natively (no WSL2 / virtualization required, so this also works in
+# Windows-on-ARM virtual machines).
+$msys2Root = "C:\msys64"
+$msys2Bash = "$msys2Root\usr\bin\bash.exe"
 
 Write-Host "[0/9] Installing base prerequisites (Git, Python, GNU Make)..." -ForegroundColor Yellow
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
@@ -90,38 +57,38 @@ try {
 } catch {
     Write-Host "  [WARN] Could not enable Developer Mode via registry. Enable manually via Settings > Developer." -ForegroundColor Yellow
 }
-
-# --- 2. WSL2 + Ubuntu 24.04 ---
-# TODO @parasew: check for Ubuntu 26 compat later
-Write-Host "[2/9] Installing WSL2 with Ubuntu 24.04..." -ForegroundColor Yellow
-
-# WSL_UTF8=1 makes wsl.exe emit UTF-8 instead of UTF-16LE, so -match works on
-# redirected output.
-$env:WSL_UTF8 = "1"
-
-# Probe wsl.exe via cmd so its stderr never reaches the PowerShell error stream:
-# under Windows PowerShell 5.1 with $ErrorActionPreference = "Stop", redirected
-# native stderr (2>$null) is converted into a terminating NativeCommandError,
-# which aborted this script on machines where WSL was never installed.
-$wslListOutput = cmd /c "wsl.exe -l -q 2>nul"
-$wslFunctional = ($LASTEXITCODE -eq 0)
-
-if ($wslFunctional -and ($wslListOutput -match "Ubuntu-24.04")) {
-    Write-Host "  Ubuntu 24.04 already registered in WSL." -ForegroundColor Green
-} else {
-    if (-not $wslFunctional) {
-        Write-Host "  WSL not yet installed; enabling WSL2 features first..." -ForegroundColor Yellow
-        Enable-WslFeature
-    }
-    Write-Host "  Installing Ubuntu 24.04 in WSL2..." -ForegroundColor Yellow
-    # This command actually starts a lightweight VM, so it also validates nested virtualization.
-    $installOutput = cmd /c "wsl.exe --install -d Ubuntu-24.04 --no-launch 2>&1"
-    if ($LASTEXITCODE -ne 0 -or $installOutput -match "HCS_E_HYPERV_NOT_INSTALLED|virtualization.*not enabled|Virtual Machine Platform") {
-        Show-NestedVirtualizationHelp
-        throw "WSL2 virtualization prerequisite missing."
-    }
-    Write-Host "  Ubuntu 24.04 installation started. A reboot is required after this script finishes." -ForegroundColor Green
+try {
+    # Deep Rust/CMake build trees can exceed 260 chars; this helps manifested
+    # tools (git, cmake). Keep the repo at a short path regardless (e.g. C:\sw).
+    Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -Type DWord
+    Write-Host "  Win32 long paths enabled." -ForegroundColor Green
+} catch {
+    Write-Host "  [WARN] Could not enable Win32 long paths." -ForegroundColor Yellow
 }
+
+# --- 2. MSYS2 ---
+Write-Host "[2/9] Installing MSYS2 (MinGW-w64 toolchain host)..." -ForegroundColor Yellow
+
+if (Test-Path $msys2Bash) {
+    Write-Host "  MSYS2 already installed at $msys2Root." -ForegroundColor Green
+} else {
+    winget install MSYS2.MSYS2 --accept-source-agreements --accept-package-agreements
+    if (-not (Test-Path $msys2Bash)) {
+        throw "MSYS2 install did not produce $msys2Bash. Install manually from https://www.msys2.org and re-run this script (or pass MSYS2_ROOT=<path> to make if installed elsewhere)."
+    }
+    Write-Host "  MSYS2 installed at $msys2Root." -ForegroundColor Green
+}
+
+# First-run core update. MSYS2 updates its core runtime first, which can end
+# the shell mid-transaction by design, so run the update twice in separate
+# bash processes (the canonical MSYS2 pattern); the first exit code may be
+# nonzero and that is fine.
+Write-Host "  Updating MSYS2 packages (two-phase core update)..." -ForegroundColor Yellow
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+& $msys2Bash -lc "pacman -Syuu --noconfirm" 2>&1 | Out-Null
+& $msys2Bash -lc "pacman -Syuu --noconfirm" 2>&1 | Out-Host
+$ErrorActionPreference = $prevEAP
+Write-Host "  MSYS2 packages updated." -ForegroundColor Green
 
 # --- 3. Visual Studio 2022 Community version ---
 Write-Host "[3/9] Installing Visual Studio 2022 Community + C++ workloads..." -ForegroundColor Yellow
@@ -129,7 +96,7 @@ $vsInstalled = Test-Path "C:\Program Files\Microsoft Visual Studio\2022\Communit
 if (-not $vsInstalled) {
     Write-Host "  Installing VS 2022 Community (this may take 20-40 minutes)..." -ForegroundColor Yellow
     winget install Microsoft.VisualStudio.2022.Community `
-        --override "--quiet --wait --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows10SDK.20348 --add Microsoft.VisualStudio.Workload.NativeCross" `
+        --override "--quiet --wait --add Microsoft.VisualStudio.Workload.NativeDesktop --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 --add Microsoft.VisualStudio.Component.Windows10SDK.20348" `
         --accept-source-agreements --accept-package-agreements
     Write-Host "  Visual Studio 2022 installed." -ForegroundColor Green
 } else {
@@ -302,6 +269,36 @@ if (-not $rustupInstalled) {
 
 Write-Host "  Adding x86_64-pc-windows-msvc target..."
 rustup target add x86_64-pc-windows-msvc --toolchain 1.85.1
+Write-Host "  Adding x86_64-pc-windows-gnu target (MinGW plugin builds)..."
+rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
+
+# --- 6b. MSYS2 provisioning ---
+# Runs after Rust so setup_msys2.sh can see the host rustup (via inherited PATH).
+Write-Host "[6b] Provisioning MSYS2 packages (MinGW gcc, clang, cmake, ninja, perl)..." -ForegroundColor Yellow
+$setupMsys2 = Join-Path $PSScriptRoot "windows\setup_msys2.sh"
+if (Test-Path $setupMsys2) {
+    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    $setupMsys2Posix = (& "$msys2Root\usr\bin\cygpath.exe" -u $setupMsys2).Trim()
+    # MSYS2_PATH_TYPE must be in bash.exe's own environment (not inside the -lc
+    # string) so the login profile builds the inherited PATH; otherwise the
+    # host rustup is invisible to the script. The trailing 2>&1 inside bash
+    # keeps pacman/rustup stderr chatter from surfacing as PowerShell
+    # NativeCommandError records.
+    $env:MSYS2_PATH_TYPE = "inherit"
+    & $msys2Bash -lc "bash '$setupMsys2Posix' 2>&1" | Out-Host
+    $setupExit = $LASTEXITCODE
+    Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
+    if ($setupExit -ne 0) {
+        Write-Host "  [WARN] setup_msys2.sh reported errors. Re-run it later from PowerShell:" -ForegroundColor Yellow
+        Write-Host "         `$env:MSYS2_PATH_TYPE='inherit'; & '$msys2Bash' -lc `"bash '$setupMsys2Posix'`"" -ForegroundColor Yellow
+    } else {
+        Write-Host "  MSYS2 provisioning complete." -ForegroundColor Green
+    }
+    $ErrorActionPreference = $prevEAP
+} else {
+    Write-Host "  [WARN] scripts/windows/setup_msys2.sh not found (running standalone before cloning?)." -ForegroundColor Yellow
+    Write-Host "         After cloning the repo, run it from an MSYS2 shell." -ForegroundColor Yellow
+}
 
 # --- 7. Go ---
 Write-Host "[7/9] Installing Go..." -ForegroundColor Yellow
@@ -345,7 +342,16 @@ Write-Host "=== Verification ===" -ForegroundColor Cyan
 $allOk = $true
 
 Write-Host "  Developer Mode: $(if ((Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -Name "AllowDevelopmentWithoutDevLicense" -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense -eq 1) { "ON" } else { "CHECK" })"
-Write-Host "  WSL2: $(try { wsl --version 2>$null; "OK" } catch { "NOT FOUND" })"
+$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+$mingwGccOk = $false
+if (Test-Path $msys2Bash) {
+    # Absolute path: a plain login shell defaults to the MSYS subsystem, which
+    # does not have /mingw64/bin on PATH.
+    & $msys2Bash -lc "/mingw64/bin/x86_64-w64-mingw32-gcc --version 2>&1" | Out-Null
+    $mingwGccOk = ($LASTEXITCODE -eq 0)
+}
+$ErrorActionPreference = $prevEAP
+Write-Host "  MSYS2 MinGW gcc: $(if ($mingwGccOk) { "OK" } else { "NOT FOUND (run scripts/windows/setup_msys2.sh)" })"
 
 function Test-Tool {
     param([string]$name, [string]$cmd)
@@ -393,17 +399,16 @@ foreach ($probe in @(
 $ErrorActionPreference = $prevEAP
 
 if ($allOk) {
-    Write-Host "`n=== All tools verified! REBOOT YOUR MACHINE before building. ===" -ForegroundColor Green
+    Write-Host "`n=== All tools verified! Reboot if Visual Studio was (re)installed or PATH changes are not picked up. ===" -ForegroundColor Green
 } else {
-    Write-Host "`n=== Some tools missing. Run again after reboot, or install missing tools manually. ===" -ForegroundColor Yellow
+    Write-Host "`n=== Some tools missing. Open a fresh terminal (or reboot) and run again, or install missing tools manually. ===" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "After reboot, run the WSL setup from inside WSL:" -ForegroundColor Cyan
-Write-Host "  wsl -d Ubuntu-24.04"
-Write-Host "  cd /mnt/c/path/to/stack_wallet/scripts/windows"
-Write-Host "  chmod +x setup_wsl.sh && ./setup_wsl.sh"
+Write-Host "If MSYS2 provisioning was skipped above (e.g. repo not yet cloned), run it once:" -ForegroundColor Cyan
+Write-Host "  `$env:MSYS2_PATH_TYPE='inherit'; & C:\msys64\usr\bin\bash.exe -lc `"bash '/c/path/to/stack_wallet/scripts/windows/setup_msys2.sh'`""
 Write-Host ""
 Write-Host "Then build from Git Bash (not PowerShell/cmd; make targets need a POSIX shell):" -ForegroundColor Cyan
 Write-Host "  cd /c/path/to/stack_wallet"
 Write-Host "  make build-windows VERSION=x.y.z BUILD_NUM=nnn"
+Write-Host "  # (MSYS2 installed elsewhere? add MSYS2_ROOT=D:/msys64)"

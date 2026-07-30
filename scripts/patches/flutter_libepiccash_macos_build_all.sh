@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# cbindgen generates the C header after the (long) cargo build below. Check for
+# it up front so a missing tool fails in a second instead of after a full compile.
+command -v cbindgen >/dev/null 2>&1 || {
+  echo "[ERROR] cbindgen not found in PATH. Install it with: cargo install cbindgen" >&2
+  exit 1
+}
+
 mkdir -p build
 echo "$(git log -1 --pretty=format:%H) $(date)" >> build/git_commit_version.txt
 
