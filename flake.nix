@@ -105,7 +105,17 @@
               if [ ! -d /Applications/Xcode.app ]; then
                 echo "[WARN] /Applications/Xcode.app not found. Full Xcode (not just Command Line Tools) is required for macOS/iOS builds. Run: make bootstrap-xcode"
               fi
-              export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+              # Respect whatever Xcode is actually active via `xcode-select`
+              # instead of forcing the default install location -- hardcoding
+              # this broke `sudo xcode-select --switch` to a differently
+              # named/located Xcode (e.g. testing a second version side by
+              # side), causing exactly the kind of toolchain/SDK mismatch
+              # this whole escape hatch exists to prevent. `xcode-select -p`
+              # itself just echoes back an already-set DEVELOPER_DIR (per its
+              # man page), and nixpkgs' own Darwin stdenv sets one earlier in
+              # this shellHook (to its vendored apple-sdk) -- so it must be
+              # unset first to actually query the real system-wide selection.
+              export DEVELOPER_DIR="$(env -u DEVELOPER_DIR xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)"
               export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
               export MACOSX_DEPLOYMENT_TARGET="12.0"
               

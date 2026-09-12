@@ -41,6 +41,15 @@ post_install do |installer|
     flutter_additional_macos_build_settings(target)
     target.build_configurations.each do |config|
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '12.0'
+      # Xcode 27 exports XROS_DEPLOYMENT_TARGET/DRIVERKIT_DEPLOYMENT_TARGET
+      # into build-phase script environments even for a plain macOS target.
+      # Rust's `cc` crate only unsets the older IPHONEOS/TVOS/WATCHOS trio
+      # before invoking clang directly (used by Cargokit-based plugins like
+      # xelis_flutter), so clang sees these newer platform vars alongside
+      # MACOSX_DEPLOYMENT_TARGET and fails with "conflicting deployment
+      # targets". Blanking them here removes them from that environment.
+      config.build_settings['XROS_DEPLOYMENT_TARGET'] = ''
+      config.build_settings['DRIVERKIT_DEPLOYMENT_TARGET'] = ''
     end
   end
 end
