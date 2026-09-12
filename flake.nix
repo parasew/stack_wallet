@@ -107,7 +107,7 @@
               fi
               export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
               export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-              export MACOSX_DEPLOYMENT_TARGET="11.0"
+              export MACOSX_DEPLOYMENT_TARGET="12.0"
               
               # --- NIX C++ COMPILER OVERRIDE ---
               export CC=/usr/bin/clang
@@ -159,7 +159,7 @@ fi
 
 unset IPHONEOS_DEPLOYMENT_TARGET TVOS_DEPLOYMENT_TARGET WATCHOS_DEPLOYMENT_TARGET
 unset XROS_DEPLOYMENT_TARGET XR_DEPLOYMENT_TARGET VISIONOS_DEPLOYMENT_TARGET DRIVERKIT_DEPLOYMENT_TARGET
-export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-12.0}"
 export SDKROOT="''${SDKROOT:-$(/usr/bin/xcrun --sdk macosx --show-sdk-path)}"
 exec /usr/bin/xcrun "$@"
 XCRUN_EOF
