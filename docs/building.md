@@ -33,7 +33,7 @@ The legacy per-platform instructions below remain valid for developers who do no
 The following instructions are for building and running on a Linux host.  Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.
 
 ### Flutter
-Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk).  Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.44.9 by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk).  Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Android Studio
 Install Android Studio.  Follow instructions here [https://developer.android.com/studio/install#linux](https://developer.android.com/studio/install#linux) or install via snap:
@@ -88,7 +88,7 @@ pip3 install --upgrade meson==0.64.1 markdown==3.4.1 markupsafe==2.1.1 jinja2==3
 ```
 
 ### Flutter
-Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/install/manual).
+Install Flutter 3.44.9 by [following their guide](https://docs.flutter.dev/install/manual).
 
 Run `flutter doctor` in a terminal to confirm its installation.
 
@@ -215,7 +215,7 @@ rustup target add aarch64-apple-ios aarch64-apple-darwin
 Optionally download [Android Studio](https://developer.android.com/studio) as an IDE and activate its Dart and Flutter plugins.  VS Code may work as an alternative, but this is not recommended.
 
 ### Flutter
-Install 3.38.5 on your Mac host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in a terminal to confirm its installation.
+Install 3.44.9 on your Mac host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Build plugins and configure
 #### Building plugins for iOS 
@@ -288,7 +288,7 @@ On Windows 11 ARM (including an ARM Windows guest on an Apple Silicon Mac), this
 Frostdart will be built by the Windows host later (MSVC).
 
 ### Install Flutter on Windows host
-Install Flutter 3.38.5 on your Windows host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in PowerShell to confirm its installation.
+Install Flutter 3.44.9 on your Windows host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in PowerShell to confirm its installation.
 
 ### Rust
 Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host.  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions and targets:
