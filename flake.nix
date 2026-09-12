@@ -5,7 +5,7 @@
     # Pinned to a specific nixpkgs rev for reproducible Flutter/Rust toolchain
     # versions. Update via `nix flake lock --update-input nixpkgs` and re-test
     # `make build-macos` and `make build-linux` before bumping.
-    nixpkgs.url = "github:NixOS/nixpkgs/5b2c2d84341b2afb5647081c1386a80d7a8d8605";
+    nixpkgs.url = "github:NixOS/nixpkgs/aff8a0b28396750446e5537a96461bc4facdb287";
     flake-utils.url = "github:numtide/flake-utils";
   };
 

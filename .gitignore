@@ -34,6 +34,7 @@ Microsoft.Windows*
 .pub/
 /build/
 android/app/.cxx
+android/build/
 
 # Nix / direnv / project-local toolchain state
 .direnv/
