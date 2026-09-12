@@ -59,7 +59,7 @@ export SCCACHE_DIR
 export SCCACHE_CACHE_SIZE
 endif
 
-.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-macos-sdk bootstrap-macos macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
+.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-macos-sdk bootstrap-macos bootstrap-xcode macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
 	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows patch-flutter-mwebd-windows \
 	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-macos-env \
 	test-mwc
@@ -139,7 +139,9 @@ endif
 bootstrap-macos: ## Install required macOS build tools via Homebrew helper script
 ifeq ($(PLATFORM),Darwin)
 	@if [ -n "$$IN_NIX_SHELL" ] || [ -n "$$NIX_BUILD_TOP" ]; then \
-		echo "[WARN] Nix environment detected; bootstrap-macos skipped (use nix/flake-provided toolchain)."; \
+		echo "[WARN] Nix environment detected; skipping the Homebrew package install (use nix/flake-provided toolchain instead)."; \
+		echo "[WARN] Xcode itself is never provided by Nix (Apple's license forbids redistributing it), so that part still runs:"; \
+		$(MAKE) bootstrap-xcode; \
 		exit 0; \
 	fi
 	@bash scripts/install_macos_build_tools.sh
@@ -147,6 +149,14 @@ ifeq ($(PLATFORM),Darwin)
 	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
 else
 	@echo "[ERROR] bootstrap-macos is macOS-only."
+	@exit 1
+endif
+
+bootstrap-xcode: ## Install/select full Xcode.app (needed regardless of Homebrew vs Nix for the rest of the toolchain)
+ifeq ($(PLATFORM),Darwin)
+	@bash scripts/install_xcode.sh
+else
+	@echo "[ERROR] bootstrap-xcode is macOS-only."
 	@exit 1
 endif
 

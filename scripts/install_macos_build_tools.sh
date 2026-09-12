@@ -47,41 +47,8 @@ if [[ -d "$RUSTUP_BIN" ]] && [[ ":$PATH:" != *":$RUSTUP_BIN:"* ]]; then
   export PATH="$RUSTUP_BIN:$PATH"
 fi
 
-echo "Checking Xcode..."
-
-# Install xcodes CLI for automated Xcode installation (only used if Xcode.app isn't on disk)
-ensure_xcodes() {
-  if command -v xcodes >/dev/null 2>&1; then return 0; fi
-  echo "Installing xcodes CLI for automated Xcode setup..."
-  sudo mkdir -p /usr/local/bin
-  curl -fsSL https://github.com/XcodesOrg/xcodes/releases/latest/download/xcodes.zip -o /tmp/xcodes.zip
-  unzip -qo /tmp/xcodes.zip -d /tmp
-  sudo mv /tmp/xcodes /usr/local/bin/xcodes
-  sudo chmod +x /usr/local/bin/xcodes
-  rm -f /tmp/xcodes.zip
-}
-
-if ls /Applications/Xcode*.app >/dev/null 2>&1; then
-  # Xcode.app already on disk: just fix xcode-select if needed
-  XCODE_APP="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)"
-  if ! xcode-select -p >/dev/null 2>&1 || [[ "$(xcode-select -p)" != *"/Xcode.app"* ]]; then
-    echo "Xcode.app found at $XCODE_APP. Setting xcode-select path..."
-    sudo xcode-select -s "$XCODE_APP/Contents/Developer"
-  else
-    echo "Xcode.app already configured."
-  fi
-elif xcode-select -p >/dev/null 2>&1; then
-  echo "Command Line Tools found but Xcode.app is required for macOS builds. Installing Xcode..."
-  ensure_xcodes
-  xcodes install --latest --select
-else
-  echo "No developer tools found. Installing Xcode..."
-  ensure_xcodes
-  xcodes install --latest --select
-fi
-
-sudo xcodebuild -license accept 2>/dev/null || true
-sudo xcodebuild -runFirstLaunch 2>/dev/null || true
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-$0}")" && pwd)"
+bash "$SCRIPT_DIR/install_xcode.sh"
 
 echo "Installing Homebrew packages..."
 brew install direnv rustup cmake meson ninja pkg-config gnu-sed cocoapods go protobuf autoconf automake libtool pandoc weasyprint toilet figlet sccache

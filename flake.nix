@@ -99,6 +99,12 @@
             # MACOS XCODE SANDBOX ESCAPE
             # ==========================================
             ${lib.optionalString pkgs.stdenv.isDarwin ''
+              # Nix cannot provide Xcode itself (Apple's license forbids
+              # redistributing it), so this only works once it's installed
+              # separately -- run `make bootstrap-xcode` if this warns.
+              if [ ! -d /Applications/Xcode.app ]; then
+                echo "[WARN] /Applications/Xcode.app not found. Full Xcode (not just Command Line Tools) is required for macOS/iOS builds. Run: make bootstrap-xcode"
+              fi
               export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
               export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
               export MACOSX_DEPLOYMENT_TARGET="11.0"
