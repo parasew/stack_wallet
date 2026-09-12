@@ -195,12 +195,12 @@ try {
 }
 
 # --- 5. Flutter ---
-Write-Host "[5/9] Installing Flutter 3.38.5..." -ForegroundColor Yellow
+Write-Host "[5/9] Installing Flutter 3.44.9..." -ForegroundColor Yellow
 $flutterInstalled = Get-Command flutter -ErrorAction SilentlyContinue
 if (-not $flutterInstalled) {
     $flutterDir = "C:\flutter"
-    $flutterZip = "$env:TEMP\flutter_windows_3.38.5-stable.zip"
-    $flutterUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.38.5-stable.zip"
+    $flutterZip = "$env:TEMP\flutter_windows_3.44.9-stable.zip"
+    $flutterUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.9-stable.zip"
 
     Write-Host "  Flutter not found. Downloading from $flutterUrl ..." -ForegroundColor Yellow
     try {
@@ -217,7 +217,7 @@ if (-not $flutterInstalled) {
         [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$flutterDir\bin", "User")
         $env:Path = $env:Path + ";$flutterDir\bin"
 
-        Write-Host "  Flutter 3.38.5 installed at $flutterDir." -ForegroundColor Green
+        Write-Host "  Flutter 3.44.9 installed at $flutterDir." -ForegroundColor Green
     } catch {
         Write-Host "  [WARN] Automatic Flutter download failed: $_" -ForegroundColor Yellow
         Write-Host "  Install Flutter manually from https://docs.flutter.dev/get-started/install/windows" -ForegroundColor Yellow
