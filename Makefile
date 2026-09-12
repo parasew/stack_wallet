@@ -300,6 +300,12 @@ macos-restore-metadata:
 	@rm -f macos/Flutter/Flutter-Debug.xcconfig.bak macos/Flutter/Flutter-Release.xcconfig.bak
 	@# Keep app target deployment aligned with FlutterMacOS.framework's own minimum (12.0 as of Flutter 3.47).
 	@sed -i.bak -e "s/MACOSX_DEPLOYMENT_TARGET = 10\\.15;/MACOSX_DEPLOYMENT_TARGET = 12.0;/g" -e "s/MACOSX_DEPLOYMENT_TARGET = 11\\.0;/MACOSX_DEPLOYMENT_TARGET = 12.0;/g" macos/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
+	@# `flutter create` regenerates AppInfo.xcconfig from Flutter's own template
+	@# (bundle ID `com.example.<name>`), not ours -- unlike build_app.sh's other
+	@# platform targets, this Makefile path never runs platforms/macos/platform_config.sh
+	@# to substitute the real bundle ID, so reassert it directly here.
+	@sed -i.bak -e "s/PRODUCT_BUNDLE_IDENTIFIER = com\\.example\\./PRODUCT_BUNDLE_IDENTIFIER = com.cypherstack./g" -e "s/Copyright © \\([0-9]*\\) com\\.example\\./Copyright © \\1 com.cypherstack./g" macos/Runner/Configs/AppInfo.xcconfig 2>/dev/null || true
+	@rm -f macos/Runner/Configs/AppInfo.xcconfig.bak
 	@# Ensure Runner configs inherit app metadata (PRODUCT_NAME/BUNDLE ID) from AppInfo.
 	@grep -q 'AppInfo.xcconfig' macos/Runner/Configs/Debug.xcconfig || \
 		sed -i.bak -e '/Flutter-Debug.xcconfig/a\
