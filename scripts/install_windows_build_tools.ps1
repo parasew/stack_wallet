@@ -241,13 +241,13 @@ if (Get-Command flutter -ErrorAction SilentlyContinue) {
     Write-Host "  Flutter warm-up done." -ForegroundColor Green
 }
 
-# --- 6. Rust (single toolchain: 1.85.1) ---
-Write-Host "[6/9] Installing Rust 1.85.1 + MSVC target..." -ForegroundColor Yellow
+# --- 6. Rust (single toolchain: 1.89.0) ---
+Write-Host "[6/9] Installing Rust 1.89.0 + MSVC target..." -ForegroundColor Yellow
 $rustupInstalled = Get-Command rustup -ErrorAction SilentlyContinue
 if (-not $rustupInstalled) {
     Write-Host "  Installing rustup-init..."
     Invoke-WebRequest -Uri "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe" -OutFile "$env:TEMP\rustup-init.exe"
-    $rustupProc = Start-Process -FilePath "$env:TEMP\rustup-init.exe" -ArgumentList "-y", "--default-toolchain", "1.85.1" -Wait -PassThru
+    $rustupProc = Start-Process -FilePath "$env:TEMP\rustup-init.exe" -ArgumentList "-y", "--default-toolchain", "1.89.0" -Wait -PassThru
     if ($rustupProc.ExitCode -ne 0) {
         throw "rustup-init exited with code $($rustupProc.ExitCode)."
     }
@@ -259,18 +259,18 @@ if (-not $rustupInstalled) {
         Write-Host "  [WARN] Could not remove temp rustup-init.exe (in use or locked). It is safe to ignore." -ForegroundColor Yellow
     }
     $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
-    Write-Host "  Rust 1.85.1 installed." -ForegroundColor Green
+    Write-Host "  Rust 1.89.0 installed." -ForegroundColor Green
 } else {
-    Write-Host "  Rustup found. Installing/ensuring 1.85.1 toolchain..."
-    rustup toolchain install 1.85.1
-    rustup default 1.85.1
-    Write-Host "  Rust 1.85.1 set as default." -ForegroundColor Green
+    Write-Host "  Rustup found. Installing/ensuring 1.89.0 toolchain..."
+    rustup toolchain install 1.89.0
+    rustup default 1.89.0
+    Write-Host "  Rust 1.89.0 set as default." -ForegroundColor Green
 }
 
 Write-Host "  Adding x86_64-pc-windows-msvc target..."
-rustup target add x86_64-pc-windows-msvc --toolchain 1.85.1
+rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0
 Write-Host "  Adding x86_64-pc-windows-gnu target (MinGW plugin builds)..."
-rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
+rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
 
 # --- 6b. MSYS2 provisioning ---
 # Runs after Rust so setup_msys2.sh can see the host rustup (via inherited PATH).

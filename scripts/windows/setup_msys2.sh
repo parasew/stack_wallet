@@ -34,23 +34,23 @@ pacman -S --needed --noconfirm \
   mingw-w64-x86_64-nasm
 
 # NOTE: do NOT install rust or go via pacman. The build uses the Windows-host
-# rustup toolchain (1.85.1) and host Go; the Makefile invokes this environment
+# rustup toolchain (1.89.0) and host Go; the Makefile invokes this environment
 # with MSYS2_PATH_TYPE=inherit so those host tools stay reachable.
 
 # --- Rust windows-gnu target (host rustup) ---
 # The host rustup lives in %USERPROFILE%\.cargo\bin. Recent MSYS2 versions do
 # not reliably inherit the Windows PATH (MSYS2_PATH_TYPE=inherit is ignored),
 # so append it explicitly instead of relying on inheritance.
-echo "--- Adding Rust x86_64-pc-windows-gnu target to host toolchain 1.85.1..."
+echo "--- Adding Rust x86_64-pc-windows-gnu target to host toolchain 1.89.0..."
 if ! command -v rustup >/dev/null 2>&1 && [ -n "${USERPROFILE:-}" ]; then
     host_cargo_bin="$(cygpath -u "$USERPROFILE")/.cargo/bin"
     export PATH="$PATH:$host_cargo_bin"
 fi
 if command -v rustup >/dev/null 2>&1; then
-    rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
+    rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
 else
     echo "[WARN] Host rustup not found. Add the target manually from PowerShell or Git Bash:"
-    echo "         rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1"
+    echo "         rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0"
 fi
 
 # --- Sanity probes ---

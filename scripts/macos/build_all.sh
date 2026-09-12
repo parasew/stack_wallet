@@ -13,7 +13,7 @@ if [[ "$APP" = "stack_wallet" ]]; then
     set_rust_version_for_libepiccash
     (cd "${ROOT_DIR}/crypto_plugins/flutter_libepiccash/scripts/macos" && ./build_all.sh ) &
     pid_libepiccash=$!
-    # Both Epic Cash and MWC use Rust 1.85.1 — no toolchain switch needed
+    # Both Epic Cash and MWC use Rust 1.89.0 — no toolchain switch needed
     (cd "${ROOT_DIR}/crypto_plugins/flutter_libmwc/scripts/macos" && ./build_all.sh ) &
     pid_libmwc=$!
 

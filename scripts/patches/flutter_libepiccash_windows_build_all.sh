@@ -13,7 +13,7 @@ if [ "${IS_ARM:-false}" = true ]; then
     exit 1
 fi
 
-rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
+rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
 
 mkdir -p build
 echo "$(git log -1 --pretty=format:%H) $(date)" >> build/git_commit_version.txt

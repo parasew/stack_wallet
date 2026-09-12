@@ -4,7 +4,7 @@
 # Invoked by `make build-windows` as:
 #   MSYSTEM=MINGW64 MSYS2_PATH_TYPE=inherit CHERE_INVOKED=1 bash.exe -l -c \
 #     "cd <repo>/scripts/windows && bash build_msys2_plugins.sh"
-# MSYS2_PATH_TYPE=inherit keeps the host rustup/cargo (1.85.1) reachable.
+# MSYS2_PATH_TYPE=inherit keeps the host rustup/cargo (1.89.0) reachable.
 
 set -x -e
 

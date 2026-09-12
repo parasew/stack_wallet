@@ -80,7 +80,7 @@ check-reqs: ## Verify essential build tools
 	@# `rustup which cargo` resolves a toolchain path even when no shim is on PATH,
 	@# but the plugin build scripts invoke bare `cargo` — verify that separately.
 	@command -v cargo >/dev/null 2>&1 || [ -x "$$HOME/.cargo/bin/cargo" ] || [ -x "$(PROJECT_CARGO_HOME)/bin/cargo" ] || { echo >&2 "[ERROR] 'cargo' is not on PATH (rustup shims missing from ~/.cargo/bin). Run 'rustup-init -y', then open a new terminal."; exit 1; }
-	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.85.1 toolchain not available."; exit 1; }
+	@rustup run 1.89.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.89.0 toolchain not available."; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v meson >/dev/null 2>&1 || { \
@@ -145,8 +145,8 @@ ifeq ($(PLATFORM),Darwin)
 		exit 0; \
 	fi
 	@bash scripts/install_macos_build_tools.sh
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.85.1 >/dev/null 2>&1 || true
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.89.0 >/dev/null 2>&1 || true
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.89.0 >/dev/null 2>&1 || true
 else
 	@echo "[ERROR] bootstrap-macos is macOS-only."
 	@exit 1
@@ -171,8 +171,8 @@ check-reqs-windows: ## Verify Windows host build requirements
 	@echo "Checking Windows prerequisites..."
 	@command -v flutter >/dev/null 2>&1 || { echo >&2 "[ERROR] Flutter not installed. Run 'scripts/install_windows_build_tools.ps1'."; exit 1; }
 	@command -v dart >/dev/null 2>&1 || { echo >&2 "[ERROR] Dart not installed."; exit 1; }
-	@rustup run 1.85.1 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.85.1 toolchain not installed."; exit 1; }
-	@rustup run 1.85.1 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-msvc" || { echo >&2 "[ERROR] x86_64-pc-windows-msvc target not added to Rust 1.85.1. Run: rustup target add x86_64-pc-windows-msvc --toolchain 1.85.1"; exit 1; }
+	@rustup run 1.89.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.89.0 toolchain not installed."; exit 1; }
+	@rustup run 1.89.0 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-msvc" || { echo >&2 "[ERROR] x86_64-pc-windows-msvc target not added to Rust 1.89.0. Run: rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0"; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v ninja >/dev/null 2>&1 || { echo >&2 "[ERROR] Ninja not installed."; exit 1; }
@@ -182,7 +182,7 @@ check-msys2: ## Verify MSYS2/MinGW environment (needed to build the windows-gnu 
 	@echo "Checking MSYS2 prerequisites..."
 	@[ -x "$(MSYS2_BASH)" ] || { echo >&2 "[ERROR] MSYS2 not found at $(MSYS2_BASH). Install with 'winget install MSYS2.MSYS2', then run scripts/windows/setup_msys2.sh. For non-default installs, pass MSYS2_ROOT=<path>."; exit 1; }
 	@$(MSYS2_RUN) "command -v x86_64-w64-mingw32-gcc >/dev/null" || { echo >&2 "[ERROR] MinGW-w64 gcc missing in MSYS2. Run scripts/windows/setup_msys2.sh."; exit 1; }
-	@rustup run 1.85.1 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-gnu" || { echo >&2 "[ERROR] x86_64-pc-windows-gnu target not added to Rust 1.85.1. Run: rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1"; exit 1; }
+	@rustup run 1.89.0 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-gnu" || { echo >&2 "[ERROR] x86_64-pc-windows-gnu target not added to Rust 1.89.0. Run: rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0"; exit 1; }
 	@echo "[OK] MSYS2 requirements found!"
 
 # --- MAINTENANCE ---
@@ -348,17 +348,17 @@ macos-restore-metadata:
 
 macos-build-native:
 	@echo "--- Building native dependencies..."
-	@# Single Rust 1.85.1 toolchain with stable symlink for Cargokit compatibility
+	@# Single Rust 1.89.0 toolchain with stable symlink for Cargokit compatibility
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.85.1 >/dev/null
+		rustup toolchain install --no-self-update 1.89.0 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.85.1 >/dev/null
+		rustup default 1.89.0 >/dev/null
 	@echo "--- Applying local patch for flutter_libepiccash macOS build script..."
 	@cp scripts/patches/flutter_libepiccash_macos_build_all.sh crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
 	@chmod +x crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
@@ -403,17 +403,17 @@ macos-build-app:
 	@# `flutter create` synthesizes a counter-app widget test that doesn't apply to this app.
 	@rm -f test/widget_test.dart
 	@chmod -R u+w macos/Runner.xcworkspace macos/Runner.xcodeproj 2>/dev/null || true
-	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.85.1 is aliased as stable
+	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.89.0 is aliased as stable
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.85.1 >/dev/null
+		rustup toolchain install --no-self-update 1.89.0 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.85.1 >/dev/null
+		rustup default 1.89.0 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		rustup run stable rustc -V
@@ -421,9 +421,9 @@ macos-build-app:
 	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
 		if [ -n "$$XELIS_MANIFEST" ]; then \
 			env HOME="$(PROJECT_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
-				rustup run 1.85.1 cargo fetch --manifest-path "$$XELIS_MANIFEST" 2>/dev/null || true; \
+				rustup run 1.89.0 cargo fetch --manifest-path "$$XELIS_MANIFEST" 2>/dev/null || true; \
 		fi
-	@# Patch xelis-common to use split_at_mut (compatible with Rust 1.85.1)
+	@# Patch xelis-common to use split_at_mut (compatible with Rust 1.89.0)
 	@env CARGO_HOME="$(PROJECT_CARGO_HOME)" bash scripts/patches/xelis_1_85_1_compat.sh
 	@echo "--- Cleaning stale Spark Mobile framework from local pub cache..."
 	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
@@ -443,17 +443,17 @@ test-mwc: ## Run MWC FFI integration test on macOS (assumes prior `make build-ma
 	@# Flutter's first-launch helper rewrites MACOSX_DEPLOYMENT_TARGET=10.15; reassert 11.0.
 	@sed -i.bak -e "s/MACOSX_DEPLOYMENT_TARGET = 10\\.15;/MACOSX_DEPLOYMENT_TARGET = 11.0;/g" macos/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 	@rm -f macos/Runner.xcodeproj/project.pbxproj.bak
-	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.85.1 is aliased as stable
+	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.89.0 is aliased as stable
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.85.1 >/dev/null
+		rustup toolchain install --no-self-update 1.89.0 >/dev/null
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
 		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.85.1-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
+			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.85.1 >/dev/null
+		rustup default 1.89.0 >/dev/null
 	@# `flutter test` re-runs pod install which re-prepares flutter_libsparkmobile; remove stale framework so the prepare step can write.
 	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
 	@chmod -R u+w macos/Runner.xcodeproj macos 2>/dev/null || true
@@ -552,11 +552,11 @@ prebuild-windows: ## Run Windows prebuild config (PowerShell)
 	@echo "--- Running Windows prebuild..."
 	@cd scripts && powershell -ExecutionPolicy Bypass -File prebuild.ps1
 
-patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.85.1 (Windows host, run after 'flutter pub get')
+patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.89.0 (Windows host, run after 'flutter pub get')
 	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
 	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
 	if [ -n "$$XELIS_MANIFEST" ]; then \
-		rustup run 1.85.1 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
+		rustup run 1.89.0 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
 	else \
 		echo "[WARN] xelis-flutter-ffi not found in pub cache; xelis patch may be a no-op."; \
 	fi

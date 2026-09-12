@@ -15,7 +15,7 @@ make build-macos     # on macOS
 make build-linux     # on Linux
 ```
 
-The Makefile is the single entry point for all builds. A single Rust `1.85.1` toolchain is provisioned by the flake for all crates (Epic Cash, MWC, FROST, xelis, coinlib, secp256k1). The bootstrap scripts `scripts/install_macos_build_tools.sh` and `scripts/install_nixos_build_tools.sh` install the same toolchain for non-Nix setups.
+The Makefile is the single entry point for all builds. A single Rust `1.89.0` toolchain is provisioned by the flake for all crates (Epic Cash, MWC, FROST, xelis, coinlib, secp256k1). The bootstrap scripts `scripts/install_macos_build_tools.sh` and `scripts/install_nixos_build_tools.sh` install the same toolchain for non-Nix setups.
 
 On macOS, run the bootstrap once (`make bootstrap-macos`, or `bash scripts/install_macos_build_tools.sh`), then **open a new terminal** before `make build-macos`: the script appends the Homebrew and `~/.cargo/bin` PATH entries to `~/.zshrc`, creating that file if macOS did not ship one.
 
@@ -70,8 +70,8 @@ Install [Rust](https://www.rust-lang.org/tools/install) via [rustup.rs](https://
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc
-rustup toolchain install 1.85.1
-rustup default 1.85.1
+rustup toolchain install 1.89.0
+rustup default 1.89.0
 cargo install cargo-ndk
 ```
 
@@ -201,12 +201,12 @@ brew install brotli cairo coreutils gdbm gettext glib gmp libevent libidn2 libng
 ```
 <!-- TODO: determine which of the above list are not needed at all. -->
 
-Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install the `1.85.1` toolchain (all crates compile on 1.85.1), as well as `cbindgen` and `cargo-lipo`.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
+Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install the `1.89.0` toolchain (all crates compile on 1.89.0), as well as `cbindgen` and `cargo-lipo`.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc 
-rustup toolchain install 1.85.1
-rustup default 1.85.1
+rustup toolchain install 1.89.0
+rustup default 1.89.0
 cargo install cargo-ndk
 cargo install cbindgen cargo-lipo
 rustup target add aarch64-apple-ios aarch64-apple-darwin
@@ -275,7 +275,7 @@ Provision the toolchain (from PowerShell; the script locates the host `rustup` i
 & C:\msys64\usr\bin\bash.exe -lc "bash '/c/path/to/stack_wallet/scripts/windows/setup_msys2.sh'"
 ```
 
-This installs MinGW-w64 gcc, clang (libclang for bindgen), cmake, ninja, perl, and make, and adds the `x86_64-pc-windows-gnu` target to the host Rust 1.85.1 toolchain.
+This installs MinGW-w64 gcc, clang (libclang for bindgen), cmake, ninja, perl, and make, and adds the `x86_64-pc-windows-gnu` target to the host Rust 1.89.0 toolchain.
 
 The plugins are then built automatically by `make build-windows` (run from Git Bash in the repo root):
 ```
@@ -293,10 +293,10 @@ Install Flutter 3.44.9 on your Windows host by [following their guide](https://d
 ### Rust
 Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host.  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions and targets:
 ```
-rustup toolchain install 1.85.1
-rustup default 1.85.1
-rustup target add x86_64-pc-windows-msvc --toolchain 1.85.1
-rustup target add x86_64-pc-windows-gnu --toolchain 1.85.1
+rustup toolchain install 1.89.0
+rustup default 1.89.0
+rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0
+rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
 cargo install cargo-ndk
 ```
 

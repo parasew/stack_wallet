@@ -66,17 +66,17 @@
             
             # ==========================================
              # RUST TOOLCHAIN AUTOMATION
-             # Single Rust 1.85.1 toolchain for all crates (Epic, MWC, FROST, xelis)
+             # Single Rust 1.89.0 toolchain for all crates (Epic, MWC, FROST, xelis)
              # ==========================================
-             if ! rustup toolchain list | grep -q "1.85.1"; then
+             if ! rustup toolchain list | grep -q "1.89.0"; then
                echo "Initializing Rust toolchain (this happens only once)..."
-               rustup toolchain install --no-self-update 1.85.1
+               rustup toolchain install --no-self-update 1.89.0
              fi
 
-             rustup default 1.85.1
+             rustup default 1.89.0
              
              if [[ "${system}" == *"darwin"* ]]; then
-               rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.85.1
+               rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.89.0
              fi
 
             if ! command -v cbindgen >/dev/null 2>&1 || ! command -v cargo-lipo >/dev/null 2>&1; then
