@@ -59,9 +59,9 @@ export SCCACHE_DIR
 export SCCACHE_CACHE_SIZE
 endif
 
-.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-macos-sdk bootstrap-macos bootstrap-xcode macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
+.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-sdk-macos bootstrap-macos bootstrap-xcode macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
 	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows patch-flutter-mwebd-windows \
-	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-macos-env \
+	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-env-macos \
 	test-mwc
 
 help: ## Show available commands
@@ -113,7 +113,7 @@ endif
 	@command -v sccache >/dev/null 2>&1 && echo "[OK] sccache (build cache) found" || echo "[WARN] sccache not installed: build cache disabled"
 	@echo "[OK] All core CLI requirements found!"
 
-check-macos-sdk: ## Verify XCode on macOS
+check-sdk-macos: ## Verify XCode on macOS
 ifeq ($(PLATFORM),Darwin)
 	@echo "Checking macOS SDK requirements..."
 	@xcrun --sdk macosx --show-sdk-path >/dev/null 2>&1 || ( \
@@ -236,7 +236,7 @@ patch-submodules: ## Apply portability patches to submodules
 
 # --- PLATFORM BUILDS ---
 
-build-macos: check-reqs-macos check-macos-sdk macos-local-state ## Build MacOS Release (Single source of truth)
+build-macos: check-reqs-macos check-sdk-macos macos-local-state ## Build MacOS Release (Single source of truth)
 ifeq ($(SKIP_NATIVE),1)
 	@echo "=== SKIP_NATIVE=1: skipping native Rust builds ==="
 	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-app
@@ -467,7 +467,7 @@ test-mwc: ## Run MWC FFI integration test on macOS (assumes prior `make build-ma
 		PATH="$(PROJECT_CARGO_HOME)/bin:$$PATH" \
 		$(FLUTTER) test integration_test/mwc_ffi_test.dart -d macos
 
-diagnose-macos-env: ## Print macOS build env and tool resolution
+diagnose-env-macos: ## Print macOS build env and tool resolution
 	@echo "--- Toolchain diagnostics ---"
 	@echo "flutter: $$(command -v $(FLUTTER) || echo missing)"
 	@echo "dart: $$(command -v $(DART) || echo missing)"
@@ -490,7 +490,7 @@ diagnose-macos-env: ## Print macOS build env and tool resolution
 	@echo "NIX_LDFLAGS=$${NIX_LDFLAGS:-<unset>}"
 	@echo "NIX_CFLAGS_LINK=$${NIX_CFLAGS_LINK:-<unset>}"
 
-build-ios: check-reqs check-macos-sdk init ## Build iOS Release
+build-ios: check-reqs check-sdk-macos init ## Build iOS Release
 	@echo "--- Configuring project..."
 	@cd scripts && ./build_app.sh -a $(APP_NAME) -p ios -v $(VERSION) -b $(BUILD_NUM) -f
 	@echo "--- Building app..."
