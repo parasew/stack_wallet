@@ -129,31 +129,43 @@
               ln -sf /usr/bin/clang++ .nix-bin/clang++
               
               # SMART LIPO & XCRUN WRAPPER
+              # lipo wrapper: the Nix store copy of FlutterMacOS.framework is
+              # read-only, so make its containing dir writable before handing
+              # off to the real lipo.
               rm -f .nix-bin/lipo .nix-bin/xcrun
-              
-              echo '#!/bin/bash' > .nix-bin/lipo
-              echo 'for arg in "$@"; do' >> .nix-bin/lipo
-              echo '    if [[ "$arg" == *"FlutterMacOS.framework"* ]]; then' >> .nix-bin/lipo
-              echo '        chmod -R u+w "$(dirname "$arg")" 2>/dev/null || true' >> .nix-bin/lipo
-              echo '    fi' >> .nix-bin/lipo
-              echo 'done' >> .nix-bin/lipo
-              echo 'exec /usr/bin/lipo "$@"' >> .nix-bin/lipo
-              chmod +x .nix-bin/lipo 
 
-              echo '#!/bin/bash' > .nix-bin/xcrun
-              echo 'if [ "$1" = "-f" ] && [ "$2" = "lipo" ]; then' >> .nix-bin/xcrun
-              echo '    echo "'$PWD'/.nix-bin/lipo"' >> .nix-bin/xcrun
-              echo '    exit 0' >> .nix-bin/xcrun
-              echo 'fi' >> .nix-bin/xcrun
-              echo "" >> .nix-bin/xcrun
-              echo '# Keep xcrun tool invocations pinned to macOS deployment context.' >> .nix-bin/xcrun
-              echo 'unset IPHONEOS_DEPLOYMENT_TARGET TVOS_DEPLOYMENT_TARGET WATCHOS_DEPLOYMENT_TARGET' >> .nix-bin/xcrun
-              echo 'unset XROS_DEPLOYMENT_TARGET XR_DEPLOYMENT_TARGET VISIONOS_DEPLOYMENT_TARGET DRIVERKIT_DEPLOYMENT_TARGET' >> .nix-bin/xcrun
-              echo 'export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"' >> .nix-bin/xcrun
-              echo 'export SDKROOT="''${SDKROOT:-$(/usr/bin/xcrun --sdk macosx --show-sdk-path)}"' >> .nix-bin/xcrun
-              echo 'exec /usr/bin/xcrun "$@"' >> .nix-bin/xcrun
+              cat > .nix-bin/lipo <<'LIPO_EOF'
+#!/bin/bash
+for arg in "$@"; do
+    if [[ "$arg" == *"FlutterMacOS.framework"* ]]; then
+        chmod -R u+w "$(dirname "$arg")" 2>/dev/null || true
+    fi
+done
+exec /usr/bin/lipo "$@"
+LIPO_EOF
+              chmod +x .nix-bin/lipo
+
+              # xcrun wrapper: `xcrun -f lipo` must resolve to the wrapper
+              # above rather than the real /usr/bin/lipo. Everything else
+              # passes through to the real xcrun, with deployment-target/SDK
+              # env vars pinned to macOS so a leaked iOS/tvOS/etc value from
+              # the outer environment doesn't leak in.
+              cat > .nix-bin/xcrun <<'XCRUN_EOF'
+#!/bin/bash
+if [ "$1" = "-f" ] && [ "$2" = "lipo" ]; then
+    echo "__NIX_BIN_DIR__/lipo"
+    exit 0
+fi
+
+unset IPHONEOS_DEPLOYMENT_TARGET TVOS_DEPLOYMENT_TARGET WATCHOS_DEPLOYMENT_TARGET
+unset XROS_DEPLOYMENT_TARGET XR_DEPLOYMENT_TARGET VISIONOS_DEPLOYMENT_TARGET DRIVERKIT_DEPLOYMENT_TARGET
+export MACOSX_DEPLOYMENT_TARGET="''${MACOSX_DEPLOYMENT_TARGET:-11.0}"
+export SDKROOT="''${SDKROOT:-$(/usr/bin/xcrun --sdk macosx --show-sdk-path)}"
+exec /usr/bin/xcrun "$@"
+XCRUN_EOF
+              sed -i.bak "s|__NIX_BIN_DIR__|$PWD/.nix-bin|" .nix-bin/xcrun && rm -f .nix-bin/xcrun.bak
               chmod +x .nix-bin/xcrun
-                                                              
+
               export PATH="$PWD/.nix-bin:$PATH"
             ''}
 
