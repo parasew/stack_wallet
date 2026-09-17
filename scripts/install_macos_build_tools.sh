@@ -88,13 +88,6 @@ if ! command -v cargo >/dev/null 2>&1; then
   die "cargo still not on PATH after rustup setup. Run 'rustup-init -y' manually, then re-run this script."
 fi
 
-echo "Installing Rust CLI build tools..."
-# cbindgen is mandatory: both macOS crypto plugin builds generate their C
-# headers with it. Do not swallow a failure here — a missing cbindgen otherwise
-# only surfaces much later as undefined symbols when Xcode links the app.
-if ! cargo install cbindgen; then
-  die "cbindgen install failed. Fix this before running 'make build-macos' (it is required to generate the plugin C headers)."
-fi
 # cargo-lipo is unmaintained and only needed for fat iOS builds: warn, don't fail.
 cargo install cargo-lipo || echo "[WARN] cargo-lipo install failed (only needed for iOS lipo builds)."
 
@@ -111,15 +104,6 @@ else
   echo "dart not found in PATH. It should come with Flutter."
 fi
 
-# Re-verify explicitly: when this script is sourced, `set -e` is intentionally
-# off, so an earlier failure would not have stopped execution.
-if command -v cbindgen >/dev/null 2>&1; then
-  cbindgen --version
-else
-  echo "[ERROR] cbindgen not found in PATH. 'make build-macos' cannot generate the"
-  echo "        plugin C headers and will fail. Install it with: cargo install cbindgen"
-fi
-
 rustup --version
 rustc --version
 rustup run 1.90.0 rustc --version
@@ -133,7 +117,7 @@ echo "Done."
 
 # Persist PATH entries for future terminals. Create ~/.zshrc when missing: a
 # vanilla macOS install ships without one, and this block used to skip silently
-# in that case — leaving new shells unable to find cargo/rustup/cbindgen and
+# in that case — leaving new shells unable to find cargo/rustup and
 # making `source`ing this script the only way to get a usable environment.
 ZSHRC="$HOME/.zshrc"
 if [ ! -f "$ZSHRC" ]; then
@@ -144,5 +128,7 @@ grep -qF 'brew shellenv' "$ZSHRC" 2>/dev/null || \
   echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> "$ZSHRC"
 grep -qF '$HOME/.cargo/bin' "$ZSHRC" 2>/dev/null || \
   echo 'export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"' >> "$ZSHRC"
-echo "→ PATH entries ensured in $ZSHRC"
+grep -qF 'RUSTUP_TOOLCHAIN=1.90.0' "$ZSHRC" 2>/dev/null || \
+  echo 'export RUSTUP_TOOLCHAIN=1.90.0' >> "$ZSHRC"
+echo "→ PATH and Rust 1.90.0 entries ensured in $ZSHRC"
 echo "  Open a new terminal (or run: source $ZSHRC) before 'make build-macos'."

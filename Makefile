@@ -80,7 +80,6 @@ check-reqs: ## Verify essential build tools
 	@# `rustup which cargo` resolves a toolchain path even when no shim is on PATH,
 	@# but the plugin build scripts invoke bare `cargo` — verify that separately.
 	@command -v cargo >/dev/null 2>&1 || [ -x "$$HOME/.cargo/bin/cargo" ] || [ -x "$(PROJECT_CARGO_HOME)/bin/cargo" ] || { echo >&2 "[ERROR] 'cargo' is not on PATH (rustup shims missing from ~/.cargo/bin). Run 'rustup-init -y', then open a new terminal."; exit 1; }
-	@rustup run 1.90.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.90.0 toolchain not available."; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v meson >/dev/null 2>&1 || { \
@@ -125,11 +124,9 @@ endif
 check-reqs-macos: check-reqs ## Verify macOS-specific tools are available in PATH
 ifeq ($(PLATFORM),Darwin)
 	@echo "Checking macOS-specific tools in PATH..."
+	@rustup run 1.90.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.90.0 toolchain not available. Run 'make bootstrap-macos'."; exit 1; }
 	@command -v pod >/dev/null 2>&1 || { echo >&2 "[ERROR] CocoaPods (pod) not installed."; exit 1; }
 	@command -v xcodebuild >/dev/null 2>&1 || { echo >&2 "[ERROR] xcodebuild not available."; exit 1; }
-	@# Both crypto plugin builds generate their C headers with cbindgen. Without it
-	@# they die mid-build and the failure only shows up as undefined symbols at link time.
-	@command -v cbindgen >/dev/null 2>&1 || [ -x "$(PROJECT_CARGO_HOME)/bin/cbindgen" ] || [ -x "$$HOME/.cargo/bin/cbindgen" ] || { echo >&2 "[ERROR] cbindgen not installed (required to generate the plugin C headers). Run: cargo install cbindgen"; exit 1; }
 	@echo "[OK] macOS-specific toolchain is available."
 else
 	@echo "[ERROR] check-reqs-macos is macOS-only."
@@ -145,7 +142,7 @@ ifeq ($(PLATFORM),Darwin)
 		exit 0; \
 	fi
 	@bash scripts/install_macos_build_tools.sh
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.90.0 >/dev/null 2>&1 || true
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain 1.90.0 >/dev/null 2>&1 || true
 else
 	@echo "[ERROR] bootstrap-macos is macOS-only."
 	@exit 1
@@ -336,97 +333,16 @@ macos-restore-metadata:
 		mv macos/Flutter/ephemeral/Flutter-Generated.xcconfig.tmp macos/Flutter/ephemeral/Flutter-Generated.xcconfig && \
 		rm -f macos/Flutter/ephemeral/Flutter-Generated.xcconfig.bak || true
 
-macos-build-native:
-	@echo "--- Building native dependencies..."
-	@# Single Rust 1.89.0 toolchain with stable symlink for Cargokit compatibility
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.89.0 >/dev/null
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.89.0 >/dev/null
-	@echo "--- Applying local patch for flutter_libepiccash macOS build script..."
-	@cp scripts/patches/flutter_libepiccash_macos_build_all.sh crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
-	@chmod +x crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh
-	@echo "--- Applying local patch for flutter_libmwc macOS build script..."
-	@cp scripts/patches/flutter_libmwc_macos_build_all.sh crypto_plugins/flutter_libmwc/scripts/macos/build_all.sh
-	@chmod +x crypto_plugins/flutter_libmwc/scripts/macos/build_all.sh
-	@env $(MACOS_ENV_UNSET) $(MACOS_ENV_SET) \
-		HOME="$(PROJECT_HOME)" \
-		XDG_CACHE_HOME="$(PROJECT_CACHE)" \
-		TMPDIR="$(PROJECT_TMP)" \
-		PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
-		CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		CARGO_TARGET_DIR="$(PROJECT_CARGO_TARGET)" \
-		CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="/usr/bin/clang" \
-		MAKEFLAGS= \
-		MFLAGS= \
-		CARGO_MAKEFLAGS= \
-		CC="/usr/bin/clang" \
-		CXX="/usr/bin/clang++" \
-		AR="/usr/bin/ar" \
-		RANLIB="/usr/bin/ranlib" \
-		SDKROOT="$$(xcrun --sdk macosx --show-sdk-path)" \
-		PROTOC="$(PROTOC_PATH)" \
-		PATH="$(PROJECT_CARGO_HOME)/bin:$$PATH:$$HOME/.cargo/bin" \
-		bash scripts/macos/build_all.sh
-	@rm -rf build/secp256k1
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		$(FLUTTER) pub run coinlib:build_macos
-	@echo "--- Patching Podfile..."
-	@sed -i.bak -e "s/platform :osx, '10.11'/platform :osx, '12.0'/g" -e "s/platform :osx, '10.15'/platform :osx, '12.0'/g" -e "s/platform :osx, '11.0'/platform :osx, '12.0'/g" macos/Podfile 2>/dev/null || true
-	@rm -f macos/Podfile.bak
-
 macos-build-app:
 	@echo "--- Final Compilation..."
 	@rm -rf macos/Runner.xcworkspace macos/Pods macos/Podfile.lock
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		$(FLUTTER) config --enable-macos-desktop >/dev/null
-	@# Reassert macOS platform metadata in the same local HOME used for the final build.
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		$(FLUTTER) create --platforms=macos . --no-pub >/dev/null
+	@$(FLUTTER) config --enable-macos-desktop >/dev/null
+	@$(FLUTTER) create --platforms=macos . --no-pub >/dev/null
 	@# `flutter create` synthesizes a counter-app widget test that doesn't apply to this app.
 	@rm -f test/widget_test.dart
 	@chmod -R u+w macos/Runner.xcworkspace macos/Runner.xcodeproj 2>/dev/null || true
-	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.89.0 is aliased as stable
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.89.0 >/dev/null
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.89.0 >/dev/null
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup run stable rustc -V
-	@# Pre-fetch xelis git deps so the checkout exists before the patch runs
-	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
-		if [ -n "$$XELIS_MANIFEST" ]; then \
-			env HOME="$(PROJECT_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
-				rustup run 1.89.0 cargo fetch --manifest-path "$$XELIS_MANIFEST" 2>/dev/null || true; \
-		fi
-	@# Patch xelis-common to use split_at_mut (compatible with Rust 1.89.0)
-	@env CARGO_HOME="$(PROJECT_CARGO_HOME)" bash scripts/patches/xelis_1_85_1_compat.sh
-	@echo "--- Cleaning stale Spark Mobile framework from local pub cache..."
-	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
 	@env $(MACOS_ENV_UNSET) $(MACOS_ENV_SET) \
-		HOME="$(PROJECT_HOME)" \
-		XDG_CACHE_HOME="$(PROJECT_CACHE)" \
-		TMPDIR="$(PROJECT_TMP)" \
-		PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
-		CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="/usr/bin/clang" \
-		PATH="$(PROJECT_CARGO_HOME)/bin:$$(dirname "$$(rustup which rustc)"):$${PATH}" \
-		ARCHS=arm64 EXCLUDED_ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES $(FLUTTER) build macos --release
+		$(FLUTTER) build macos --release
 	@# Nix-packaged Flutter has no real git revision, so every `flutter create`/
 	@# build call above stamps .metadata with a placeholder "nixpkgs000..." hash;
 	@# restore the committed one so it doesn't show up as a spurious diff.
@@ -437,28 +353,8 @@ test-mwc: ## Run MWC FFI integration test on macOS (assumes prior `make build-ma
 	@# Flutter's first-launch helper rewrites MACOSX_DEPLOYMENT_TARGET=10.15; reassert 12.0.
 	@sed -i.bak -e "s/MACOSX_DEPLOYMENT_TARGET = 10\\.15;/MACOSX_DEPLOYMENT_TARGET = 12.0;/g" -e "s/MACOSX_DEPLOYMENT_TARGET = 11\\.0;/MACOSX_DEPLOYMENT_TARGET = 12.0;/g" macos/Runner.xcodeproj/project.pbxproj 2>/dev/null || true
 	@rm -f macos/Runner.xcodeproj/project.pbxproj.bak
-	@# Cargokit calls `rustup run stable cargo ...`; ensure 1.89.0 is aliased as stable
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup toolchain install --no-self-update 1.89.0 >/dev/null
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		sh -c 'rm -rf "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"; \
-			ln -sfn 1.89.0-aarch64-apple-darwin "$$RUSTUP_HOME/toolchains/stable-aarch64-apple-darwin"' >/dev/null 2>&1 || true
-	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		rustup default 1.89.0 >/dev/null
-	@# `flutter test` re-runs pod install which re-prepares flutter_libsparkmobile; remove stale framework so the prepare step can write.
-	@find "$(PUB_CACHE)/git" -path '*/flutter_libsparkmobile-*/macos/flutter_libsparkmobile.framework' -prune -exec rm -rf {} + 2>/dev/null || true
 	@chmod -R u+w macos/Runner.xcodeproj macos 2>/dev/null || true
 	@env $(MACOS_ENV_UNSET) $(MACOS_ENV_SET) \
-		HOME="$(PROJECT_HOME)" \
-		XDG_CACHE_HOME="$(PROJECT_CACHE)" \
-		TMPDIR="$(PROJECT_TMP)" \
-		PUB_CACHE="$(PUB_CACHE)" \
-		RUSTUP_HOME="$(PROJECT_RUSTUP_HOME)" \
-		CARGO_HOME="$(PROJECT_CARGO_HOME)" \
-		PATH="$(PROJECT_CARGO_HOME)/bin:$$PATH" \
 		$(FLUTTER) test integration_test/mwc_ffi_test.dart -d macos
 
 diagnose-env-macos: ## Print macOS build env and tool resolution
