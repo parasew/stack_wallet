@@ -5,7 +5,7 @@
     # Pinned to a specific nixpkgs rev for reproducible Flutter/Rust toolchain
     # versions. Update via `nix flake lock --update-input nixpkgs` and re-test
     # `make build-macos` and `make build-linux` before bumping.
-    nixpkgs.url = "github:NixOS/nixpkgs/aff8a0b28396750446e5537a96461bc4facdb287";
+    nixpkgs.url = "github:NixOS/nixpkgs/b1b875982b17dabde9b4a37f3e229e74913e6db3";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -66,17 +66,18 @@
             
             # ==========================================
              # RUST TOOLCHAIN AUTOMATION
-             # Single Rust 1.89.0 toolchain for all crates (Epic, MWC, FROST, xelis)
+             # Single Rust 1.90.0 toolchain for every native-assets crate.
              # ==========================================
-             if ! rustup toolchain list | grep -q "1.89.0"; then
+             if ! rustup toolchain list | grep -q "1.90.0"; then
                echo "Initializing Rust toolchain (this happens only once)..."
-               rustup toolchain install --no-self-update 1.89.0
+               rustup toolchain install --no-self-update 1.90.0
              fi
 
-             rustup default 1.89.0
+             rustup default 1.90.0
+             export RUSTUP_TOOLCHAIN=1.90.0
              
              if [[ "${system}" == *"darwin"* ]]; then
-               rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.89.0
+               rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.90.0
              fi
 
             if ! command -v cbindgen >/dev/null 2>&1 || ! command -v cargo-lipo >/dev/null 2>&1; then
@@ -122,6 +123,7 @@
               # --- NIX C++ COMPILER OVERRIDE ---
               export CC=/usr/bin/clang
               export CXX=/usr/bin/clang++
+              unset LD
               export AR=/usr/bin/ar
               export AS=/usr/bin/as
               export NM=/usr/bin/nm
