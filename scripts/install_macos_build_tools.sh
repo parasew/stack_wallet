@@ -60,10 +60,11 @@ if ! command -v rustup >/dev/null 2>&1; then
   die "rustup not found in PATH. Check brew install."
 fi
 
-echo "Ensuring Rust 1.89.0 single toolchain..."
-rustup toolchain install 1.89.0
-rustup default 1.89.0
-rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain 1.89.0 >/dev/null 2>&1 || true
+echo "Ensuring Rust 1.90.0 single toolchain..."
+rustup toolchain install 1.90.0
+rustup default 1.90.0
+export RUSTUP_TOOLCHAIN=1.90.0
+rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --toolchain 1.90.0 >/dev/null 2>&1 || true
 
 # Homebrew's rustup formula is keg-only and does not necessarily create the
 # cargo/rustc shims in ~/.cargo/bin — `rustup toolchain install` alone may leave
@@ -72,10 +73,10 @@ rustup target add aarch64-apple-darwin x86_64-apple-darwin aarch64-apple-ios --t
 if [ ! -x "$HOME/.cargo/bin/cargo" ]; then
   echo "cargo shims missing in ~/.cargo/bin; creating them via rustup-init..."
   if command -v rustup-init >/dev/null 2>&1; then
-    rustup-init -y --no-modify-path --default-toolchain 1.89.0 || true
+    rustup-init -y --no-modify-path --default-toolchain 1.90.0 || true
   else
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-      | sh -s -- -y --no-modify-path --default-toolchain 1.89.0 || true
+      | sh -s -- -y --no-modify-path --default-toolchain 1.90.0 || true
   fi
 fi
 
@@ -121,7 +122,7 @@ fi
 
 rustup --version
 rustc --version
-rustup run 1.89.0 rustc --version
+rustup run 1.90.0 rustc --version
 pod --version
 go version
 autoreconf --version | head -n 1 || true

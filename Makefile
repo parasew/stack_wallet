@@ -61,7 +61,7 @@ endif
 
 .PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-sdk-macos bootstrap-macos bootstrap-xcode macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
 	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows patch-flutter-mwebd-windows \
-	macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app diagnose-env-macos \
+	macos-prepare macos-configure macos-restore-metadata macos-build-app diagnose-env-macos \
 	test-mwc
 
 help: ## Show available commands
@@ -80,7 +80,7 @@ check-reqs: ## Verify essential build tools
 	@# `rustup which cargo` resolves a toolchain path even when no shim is on PATH,
 	@# but the plugin build scripts invoke bare `cargo` — verify that separately.
 	@command -v cargo >/dev/null 2>&1 || [ -x "$$HOME/.cargo/bin/cargo" ] || [ -x "$(PROJECT_CARGO_HOME)/bin/cargo" ] || { echo >&2 "[ERROR] 'cargo' is not on PATH (rustup shims missing from ~/.cargo/bin). Run 'rustup-init -y', then open a new terminal."; exit 1; }
-	@rustup run 1.89.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.89.0 toolchain not available."; exit 1; }
+	@rustup run 1.90.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] rustup 1.90.0 toolchain not available."; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v meson >/dev/null 2>&1 || { \
@@ -145,8 +145,7 @@ ifeq ($(PLATFORM),Darwin)
 		exit 0; \
 	fi
 	@bash scripts/install_macos_build_tools.sh
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.89.0 >/dev/null 2>&1 || true
-	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.89.0 >/dev/null 2>&1 || true
+	@rustup target add aarch64-apple-darwin x86_64-apple-darwin --toolchain 1.90.0 >/dev/null 2>&1 || true
 else
 	@echo "[ERROR] bootstrap-macos is macOS-only."
 	@exit 1
@@ -236,21 +235,16 @@ patch-submodules: ## Apply portability patches to submodules
 
 # --- PLATFORM BUILDS ---
 
-build-macos: check-reqs-macos check-sdk-macos macos-local-state ## Build MacOS Release (Single source of truth)
-ifeq ($(SKIP_NATIVE),1)
-	@echo "=== SKIP_NATIVE=1: skipping native Rust builds ==="
+build-macos: check-reqs-macos check-sdk-macos macos-local-state ## Build macOS release through Flutter native-assets hooks
 	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-app
-else
-	@$(MAKE) macos-prepare macos-configure macos-restore-metadata macos-build-native macos-build-app
-endif
 
 macos-prepare:
 	@echo "--- Sanitizing environment..."
 	@sed -i.bak 's/\xc2\xa0/ /g' scripts/app_config/templates/pubspec.template.yaml 2>/dev/null || true
 	@rm -f scripts/app_config/templates/pubspec.template.yaml.bak
-	@chmod -R u+w macos build scripts crypto_plugins 2>/dev/null || true
+	@chmod -R u+w macos build scripts 2>/dev/null || true
 	@[ -f pubspec.yaml ] && chmod u+w pubspec.yaml 2>/dev/null || true
-	@rm -rf build/secp256k1 macos/Runner.xcworkspace crypto_plugins/*/scripts/macos/build
+	@rm -rf build/secp256k1 macos/Runner.xcworkspace
 
 macos-configure:
 	@echo "--- Configuring project..."
@@ -260,19 +254,9 @@ macos-configure:
 		exit 1; \
 	fi
 	@xcodebuild -runFirstLaunch 2>/dev/null || true
-	@echo "--- Initializing submodules..."
-	@git submodule update --init --recursive
 	@echo "--- Bootstrapping local config files..."
 	@cd scripts && env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		bash prebuild.sh
-	@if [ ! -f crypto_plugins/flutter_libepiccash/lib/git_versions.dart ] && [ -f crypto_plugins/flutter_libepiccash/lib/git_versions_example.dart ]; then \
-		echo "--- Creating flutter_libepiccash git_versions.dart from example..."; \
-		cp crypto_plugins/flutter_libepiccash/lib/git_versions_example.dart crypto_plugins/flutter_libepiccash/lib/git_versions.dart; \
-	fi
-	@if [ ! -f crypto_plugins/flutter_libmwc/lib/git_versions.dart ] && [ -f crypto_plugins/flutter_libmwc/lib/git_versions_example.dart ]; then \
-		echo "--- Creating flutter_libmwc git_versions.dart from example..."; \
-		cp crypto_plugins/flutter_libmwc/lib/git_versions_example.dart crypto_plugins/flutter_libmwc/lib/git_versions.dart; \
-	fi
 	@echo "--- Regenerating pubspec.yaml from template..."
 	@cp scripts/app_config/templates/pubspec.template.yaml pubspec.yaml
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
