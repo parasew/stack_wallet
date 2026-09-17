@@ -2,38 +2,19 @@
 
 Here you will find instructions on how to install the necessary tools for building and running the app.
 
-## Nix / direnv (recommended for macOS and Linux)
-
-A `flake.nix` and `.envrc` provide a reproducible development environment on macOS (Determinate Nix on macOS Tahoe ARM tested), NixOS, and other Linux distributions.
-
-```
-# enter the dev shell
-nix develop          # or: direnv allow
-
-# build
-make build-macos     # on macOS
-make build-linux     # on Linux
-```
-
-The Makefile is the single entry point for all builds. A single Rust `1.89.0` toolchain is provisioned by the flake for all crates (Epic Cash, MWC, FROST, xelis, coinlib, secp256k1). The bootstrap scripts `scripts/install_macos_build_tools.sh` and `scripts/install_nixos_build_tools.sh` install the same toolchain for non-Nix setups.
-
-On macOS, run the bootstrap once (`make bootstrap-macos`, or `bash scripts/install_macos_build_tools.sh`), then **open a new terminal** before `make build-macos`: the script appends the Homebrew and `~/.cargo/bin` PATH entries to `~/.zshrc`, creating that file if macOS did not ship one.
-
-The legacy per-platform instructions below remain valid for developers who do not want to use Nix.
-
 ## Prerequisites
 
-- The only OS supported for building Android and Linux desktop is Ubuntu 24.04.  Windows builds run natively on Windows, using MSYS2/MinGW-w64 for the windows-gnu crypto plugins (no WSL2 required).  macOS builds for itself and iOS.  Advanced users may also be able to build on other Debian-based distributions like Linux Mint.
+- The only OS supported for building Android and Linux desktop is Ubuntu 24.04.  Windows builds require using Ubuntu 24.04 on WSL2.  macOS builds for itself and iOS.  Advanced users may also be able to build on other Debian-based distributions like Linux Mint.
 - Android setup ([Android Studio](https://developer.android.com/studio) and subsequent dependencies)
 - 100 GB of storage
 - Install go: [https://go.dev/doc/install](https://go.dev/doc/install)
 
 ## Linux host
 
-The following instructions are for building and running on a Linux host.  Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.
+The following instructions are for building and running on a Linux host.  Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.  This entire section (except for the Android Studio section) needs to be completed in WSL if building on a Windows host.
 
 ### Flutter
-Install Flutter 3.44.9 by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk).  Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk).  Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Android Studio
 Install Android Studio.  Follow instructions here [https://developer.android.com/studio/install#linux](https://developer.android.com/studio/install#linux) or install via snap:
@@ -70,7 +51,7 @@ Install [Rust](https://www.rust-lang.org/tools/install) via [rustup.rs](https://
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc
-rustup toolchain install 1.89.0
+rustup install 1.89.0 1.85.1 1.81.0
 rustup default 1.89.0
 cargo install cargo-ndk
 ```
@@ -88,7 +69,7 @@ pip3 install --upgrade meson==0.64.1 markdown==3.4.1 markupsafe==2.1.1 jinja2==3
 ```
 
 ### Flutter
-Install Flutter 3.44.9 by [following their guide](https://docs.flutter.dev/install/manual).
+Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/install/manual).
 
 Run `flutter doctor` in a terminal to confirm its installation.
 
@@ -113,6 +94,7 @@ Coinlib requires a secp256k1 library to be built prior to running Stack Wallet. 
  - Linux host for Linux targets:  `dart run coinlib:build_linux` (requires [Docker](https://docs.docker.com/engine/install/ubuntu/) or [`podman`](https://podman.io/docs/installation))
  - Linux host for Windows targets: `dart run coinlib:build_windows_crosscompile`
  - Windows host: `dart run coinlib:build_windows`
+ - WSL2 host: `dart run coinlib:build_wsl`
  - macOS host: `dart run coinlib:build_macos`
 
 or by using `scripts/linux/build_secp256k1.sh` or `scripts/windows/build_secp256k1.bat`.
@@ -159,7 +141,30 @@ cd scripts
 ```
 
 #### Building plugins and configure for Windows
-*Windows plugins are built natively on a Windows host — see the [Windows host](#windows-host) section. The former Linux cross-build path has been removed from the local build scripts.*
+*This step is only necessary inside WSL2 for building on a Windows host.*
+
+Install dependencies like MXE:
+```
+cd scripts/windows
+./deps.sh
+```
+
+Upgrade the version of cmake >= 3.31.6, the default version of ubuntu 24.04 (3.28.1) will be too low to build libepiccash.
+You can use pip to install a specific version
+```
+sudo apt remove cmake
+pip install cmake==3.31.6
+```
+
+install go in WSL [https://go.dev/doc/install](https://go.dev/doc/install) (follow linux instructions) and ensure you have `mingw-w64` package installed to get the `x86_64-w64-mingw32-gcc` compiler.
+
+go version should be at least 1.24
+
+and use `scripts/build_app.sh` to build plugins: (see the [Build script section](#build-script-build_appsh) to understand the arguments)
+```
+cd ..
+./build_app.sh -a stack_wallet -p windows -v 2.4.4 -b 301
+```
 
 ### Running
 #### Android
@@ -201,11 +206,11 @@ brew install brotli cairo coreutils gdbm gettext glib gmp libevent libidn2 libng
 ```
 <!-- TODO: determine which of the above list are not needed at all. -->
 
-Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install the `1.89.0` toolchain (all crates compile on 1.89.0), as well as `cbindgen` and `cargo-lipo`.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
+Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install toolchains 1.81.0, 1.85.1, and 1.89.0 as well as `cbindgen` and `cargo-lipo` too.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc 
-rustup toolchain install 1.89.0
+rustup install 1.89.0 1.85.1 1.81.0
 rustup default 1.89.0
 cargo install cargo-ndk
 cargo install cbindgen cargo-lipo
@@ -215,7 +220,7 @@ rustup target add aarch64-apple-ios aarch64-apple-darwin
 Optionally download [Android Studio](https://developer.android.com/studio) as an IDE and activate its Dart and Flutter plugins.  VS Code may work as an alternative, but this is not recommended.
 
 ### Flutter
-Install 3.44.9 on your Mac host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in a terminal to confirm its installation.
+Install 3.38.5 on your Mac host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Build plugins and configure
 #### Building plugins for iOS 
@@ -258,45 +263,50 @@ flutter run macos
 ## Windows host
 
 ### Visual Studio
-Visual Studio 2022 is required for Windows development with the Flutter SDK.  Download it at https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history and install the "Desktop development with C++" workload and Visual C++ x64 build tools.  You may also need the Windows 10 or 11 SDK depending on your Windows version.  The Linux development workload is not required.
+Visual Studio 2022 is required for Windows development with the Flutter SDK.  Download it at https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history and install the "Desktop development with C++", "Linux development with C++", and "Visual C++ build tools" workloads.  You may also need the Windows 10, 11, and/or Universal SDK workloads depending on your Windows version.
 
-### Build plugins natively (MSYS2)
-The windows-gnu crypto plugins (libepiccash, libmwc) are built natively on the Windows host using the MinGW-w64 toolchain from [MSYS2](https://www.msys2.org) — no WSL2 or virtualization is required.
+### Build plugins in WSL2
+Set up Ubuntu 24.04 in WSL2.  Follow the entire Linux host section in the WSL2 Ubuntu 24.04 host to get set up to build.  The Android Studio section may be skipped in WSL (it's only needed on the Windows host).
 
-**Important:** clone/place the repository at a *short* path without spaces, e.g. `C:\sw`.  Windows caps absolute paths at 260 characters; the deep Rust dependency builds are therefore redirected to a short cargo target root (`C:\t` by default, override with `STACK_CARGO_TARGET_ROOT=<path>`), but a short repo path keeps the remaining source/build paths safely under the limit (the build warns above 60 characters).
-
-Install MSYS2 (skip if `scripts/install_windows_build_tools.ps1` already ran; it does all of this):
+Install the following libraries:
 ```
-winget install MSYS2.MSYS2
+sudo apt-get install libgtk2.0-dev nasm mingw-w64
 ```
 
-Provision the toolchain (from PowerShell; the script locates the host `rustup` in `%USERPROFILE%\.cargo\bin` itself — recent MSYS2 versions ignore `MSYS2_PATH_TYPE=inherit`):
+The WSL2 host may optionally be navigated to the `stack_wallet` repository on the Windows host in order to build the plugins in-place and skip the next section in which you copy the `dll`s from WSL2 to Windows.
+
+In this case, you need to enable "metadata" in your wsl setup to be able to modify files on your Windows filesystem.
+Add this content to your /etc/wsl.conf in WSL.
 ```
-& C:\msys64\usr\bin\bash.exe -lc "bash '/c/path/to/stack_wallet/scripts/windows/setup_msys2.sh'"
+[automount]
+options = "metadata"
+```
+Then restart the wsl from Windows
+```
+wsl --shutdown
+wsl
 ```
 
-This installs MinGW-w64 gcc, clang (libclang for bindgen), cmake, ninja, perl, and make, and adds the `x86_64-pc-windows-gnu` target to the host Rust 1.89.0 toolchain.
+https://stackoverflow.com/questions/46610256/chmod-wsl-bash-doesnt-work/50856772#50856772
 
-The plugins are then built automatically by `make build-windows` (run from Git Bash in the repo root):
-```
-make build-windows VERSION=x.y.z BUILD_NUM=nnn
-```
-If MSYS2 is installed somewhere other than `C:\msys64`, pass `MSYS2_ROOT=<path>`.  To skip plugin compilation entirely, use `make download-windows`, which downloads prebuilt DLLs (and the prebuilt `mwebd.exe`) and needs no MSYS2 at all.
+Then build `secp256k1.dll` by running the following script on the WSL2 Ubuntu 24.04 host:
 
-On Windows 11 ARM (including an ARM Windows guest on an Apple Silicon Mac), this command intentionally builds the complete **x64** application and runs the build tools through Windows' x64 emulation.  The result is written below `build\windows\x64`; native ARM64 application and plugin binaries are not supported yet.  Do not set `IS_ARM=true` for this build.
+- `stack_wallet/scripts/windows/build_secp256k1_wsl.sh`
 
-Frostdart will be built by the Windows host later (MSVC).
+The crypto plugin libraries (epiccash, mwc, frostdart) are native-assets packages and are built by their build hooks during `flutter build`; they no longer need to be built here.
+
+If the DLL was built on the WSL filesystem instead of on Windows, copy `stack_wallet/build/secp256k1.dll` to the same position on the Windows host.
+
+Frostdart will be built by the Windows host later.
 
 ### Install Flutter on Windows host
-Install Flutter 3.44.9 on your Windows host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in PowerShell to confirm its installation.
+Install Flutter 3.38.5 on your Windows host (not in WSL2) by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in PowerShell to confirm its installation.
 
 ### Rust
-Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host.  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions and targets:
+Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host (not in WSL2).  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions:
 ```
-rustup toolchain install 1.89.0
+rustup install 1.89.0 1.85.1 1.81.0
 rustup default 1.89.0
-rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0
-rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
 cargo install cargo-ndk
 ```
 
@@ -343,15 +353,6 @@ cd .. // When finished go back to the root directory.
 
 
 or manually by creating the files referenced in that script with the specified content. 
-
-### Build frostdart
-
-In PowerShell on the Windows host, navigate to the `stack_wallet` folder:
-```
-cd crypto_plugins/frostdart/scripts/windows
-./build_all.bat
-cd .. // When finished go back to the root directory.
-```
 
 ### Running
 
