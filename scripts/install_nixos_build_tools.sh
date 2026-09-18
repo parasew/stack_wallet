@@ -33,15 +33,14 @@ nix --extra-experimental-features "nix-command flakes" profile add \
   nixpkgs#libtool \
   nixpkgs#clang || true
 
-echo "Ensuring Rust 1.89.0 single toolchain..."
-# Single Rust 1.89.0: all crates (Epic, MWC, FROST, xelis, coinlib) compile on 1.89.0.
-# See scripts/rust_version.sh and flake.nix.
-rustup toolchain install --no-self-update 1.89.0
-rustup default 1.89.0
-rustup target add aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu --toolchain 1.89.0 >/dev/null 2>&1 || true
+echo "Ensuring Rust 1.90.0 single toolchain..."
+rustup toolchain install --no-self-update 1.90.0
+rustup default 1.90.0
+export RUSTUP_TOOLCHAIN=1.90.0
+rustup target add aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu --toolchain 1.90.0 >/dev/null 2>&1 || true
 
-echo "Installing Rust CLI build tools..."
-cargo install cargo-ndk cbindgen cargo-lipo || true
+echo "Installing optional Rust CLI build tools..."
+cargo install cargo-ndk || true
 
 echo "Verifying toolchain..."
 if command -v flutter >/dev/null 2>&1; then
@@ -58,7 +57,7 @@ fi
 
 rustup --version
 rustc --version
-rustup run 1.89.0 rustc --version
+rustup run 1.90.0 rustc --version
 go version
 protoc --version || true
 cmake --version | head -n 1 || true

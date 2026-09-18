@@ -5,7 +5,7 @@
 #   Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 #   .\scripts\install_windows_build_tools.ps1
 # Reboot afterwards if Visual Studio was installed. No WSL2/virtualization is
-# required: the windows-gnu plugins build natively via MSYS2/MinGW-w64.
+# required: Flutter native-assets hooks build the Rust dependencies directly.
 
 $ErrorActionPreference = "Stop"
 
@@ -16,13 +16,7 @@ function Refresh-Path {
 
 Write-Host "=== Stack Wallet Windows Host Bootstrap ===" -ForegroundColor Cyan
 
-# MSYS2 provides the MinGW-w64 toolchain used to build the windows-gnu crypto
-# plugins natively (no WSL2 / virtualization required, so this also works in
-# Windows-on-ARM virtual machines).
-$msys2Root = "C:\msys64"
-$msys2Bash = "$msys2Root\usr\bin\bash.exe"
-
-Write-Host "[0/9] Installing base prerequisites (Git, Python, GNU Make)..." -ForegroundColor Yellow
+Write-Host "[0/8] Installing base prerequisites (Git, Python, GNU Make)..." -ForegroundColor Yellow
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     winget install Git.Git --accept-source-agreements --accept-package-agreements
     Write-Host "  Git installed (includes Git Bash, required to run make targets)." -ForegroundColor Green
@@ -46,7 +40,7 @@ if (-not (Get-Command make -ErrorAction SilentlyContinue)) {
 }
 Refresh-Path
 
-Write-Host "[1/9] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
+Write-Host "[1/8] Enabling Developer Mode (symlink support)..." -ForegroundColor Yellow
 try {
     $RegistryKeyPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock"
     if (-not (Test-Path $RegistryKeyPath)) {
@@ -66,32 +60,8 @@ try {
     Write-Host "  [WARN] Could not enable Win32 long paths." -ForegroundColor Yellow
 }
 
-# --- 2. MSYS2 ---
-Write-Host "[2/9] Installing MSYS2 (MinGW-w64 toolchain host)..." -ForegroundColor Yellow
-
-if (Test-Path $msys2Bash) {
-    Write-Host "  MSYS2 already installed at $msys2Root." -ForegroundColor Green
-} else {
-    winget install MSYS2.MSYS2 --accept-source-agreements --accept-package-agreements
-    if (-not (Test-Path $msys2Bash)) {
-        throw "MSYS2 install did not produce $msys2Bash. Install manually from https://www.msys2.org and re-run this script (or pass MSYS2_ROOT=<path> to make if installed elsewhere)."
-    }
-    Write-Host "  MSYS2 installed at $msys2Root." -ForegroundColor Green
-}
-
-# First-run core update. MSYS2 updates its core runtime first, which can end
-# the shell mid-transaction by design, so run the update twice in separate
-# bash processes (the canonical MSYS2 pattern); the first exit code may be
-# nonzero and that is fine.
-Write-Host "  Updating MSYS2 packages (two-phase core update)..." -ForegroundColor Yellow
-$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-& $msys2Bash -lc "pacman -Syuu --noconfirm" 2>&1 | Out-Null
-& $msys2Bash -lc "pacman -Syuu --noconfirm" 2>&1 | Out-Host
-$ErrorActionPreference = $prevEAP
-Write-Host "  MSYS2 packages updated." -ForegroundColor Green
-
 # --- 3. Visual Studio 2022 Community version ---
-Write-Host "[3/9] Installing Visual Studio 2022 Community + C++ workloads..." -ForegroundColor Yellow
+Write-Host "[2/8] Installing Visual Studio 2022 Community + C++ workloads..." -ForegroundColor Yellow
 $vsInstalled = Test-Path "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
 if (-not $vsInstalled) {
     Write-Host "  Installing VS 2022 Community (this may take 20-40 minutes)..." -ForegroundColor Yellow
@@ -150,7 +120,7 @@ if (Test-VsCppWorkload) {
 }
 
 # --- 4. NuGet + CppWinRT ---
-Write-Host "[4/9] Installing NuGet and CppWinRT 2.0.210806.1..." -ForegroundColor Yellow
+Write-Host "[3/8] Installing NuGet and CppWinRT 2.0.210806.1..." -ForegroundColor Yellow
 
 # Ensure NuGet CLI is available (winget package may not place it on PATH immediately).
 function Ensure-NuGet {
@@ -195,12 +165,12 @@ try {
 }
 
 # --- 5. Flutter ---
-Write-Host "[5/9] Installing Flutter 3.44.9..." -ForegroundColor Yellow
+Write-Host "[4/8] Installing Flutter 3.47.4..." -ForegroundColor Yellow
 $flutterInstalled = Get-Command flutter -ErrorAction SilentlyContinue
 if (-not $flutterInstalled) {
     $flutterDir = "C:\flutter"
-    $flutterZip = "$env:TEMP\flutter_windows_3.44.9-stable.zip"
-    $flutterUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.9-stable.zip"
+    $flutterZip = "$env:TEMP\flutter_windows_3.47.4-stable.zip"
+    $flutterUrl = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.47.4-stable.zip"
 
     Write-Host "  Flutter not found. Downloading from $flutterUrl ..." -ForegroundColor Yellow
     try {
@@ -217,7 +187,7 @@ if (-not $flutterInstalled) {
         [Environment]::SetEnvironmentVariable("Path", $env:Path + ";$flutterDir\bin", "User")
         $env:Path = $env:Path + ";$flutterDir\bin"
 
-        Write-Host "  Flutter 3.44.9 installed at $flutterDir." -ForegroundColor Green
+        Write-Host "  Flutter 3.47.4 installed at $flutterDir." -ForegroundColor Green
     } catch {
         Write-Host "  [WARN] Automatic Flutter download failed: $_" -ForegroundColor Yellow
         Write-Host "  Install Flutter manually from https://docs.flutter.dev/get-started/install/windows" -ForegroundColor Yellow
@@ -241,13 +211,13 @@ if (Get-Command flutter -ErrorAction SilentlyContinue) {
     Write-Host "  Flutter warm-up done." -ForegroundColor Green
 }
 
-# --- 6. Rust (single toolchain: 1.89.0) ---
-Write-Host "[6/9] Installing Rust 1.89.0 + MSVC target..." -ForegroundColor Yellow
+# --- 6. Rust (single toolchain: 1.90.0) ---
+Write-Host "[5/8] Installing Rust 1.90.0 + MSVC target..." -ForegroundColor Yellow
 $rustupInstalled = Get-Command rustup -ErrorAction SilentlyContinue
 if (-not $rustupInstalled) {
     Write-Host "  Installing rustup-init..."
     Invoke-WebRequest -Uri "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe" -OutFile "$env:TEMP\rustup-init.exe"
-    $rustupProc = Start-Process -FilePath "$env:TEMP\rustup-init.exe" -ArgumentList "-y", "--default-toolchain", "1.89.0" -Wait -PassThru
+    $rustupProc = Start-Process -FilePath "$env:TEMP\rustup-init.exe" -ArgumentList "-y", "--default-toolchain", "1.90.0" -Wait -PassThru
     if ($rustupProc.ExitCode -ne 0) {
         throw "rustup-init exited with code $($rustupProc.ExitCode)."
     }
@@ -259,49 +229,20 @@ if (-not $rustupInstalled) {
         Write-Host "  [WARN] Could not remove temp rustup-init.exe (in use or locked). It is safe to ignore." -ForegroundColor Yellow
     }
     $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
-    Write-Host "  Rust 1.89.0 installed." -ForegroundColor Green
+    Write-Host "  Rust 1.90.0 installed." -ForegroundColor Green
 } else {
-    Write-Host "  Rustup found. Installing/ensuring 1.89.0 toolchain..."
-    rustup toolchain install 1.89.0
-    rustup default 1.89.0
-    Write-Host "  Rust 1.89.0 set as default." -ForegroundColor Green
+    Write-Host "  Rustup found. Installing/ensuring 1.90.0 toolchain..."
+    rustup toolchain install 1.90.0
+    rustup default 1.90.0
+    Write-Host "  Rust 1.90.0 set as default." -ForegroundColor Green
 }
+$env:RUSTUP_TOOLCHAIN = "1.90.0"
+[Environment]::SetEnvironmentVariable("RUSTUP_TOOLCHAIN", "1.90.0", "User")
 
 Write-Host "  Adding x86_64-pc-windows-msvc target..."
-rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0
-Write-Host "  Adding x86_64-pc-windows-gnu target (MinGW plugin builds)..."
-rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0
-
-# --- 6b. MSYS2 provisioning ---
-# Runs after Rust so setup_msys2.sh can see the host rustup (via inherited PATH).
-Write-Host "[6b] Provisioning MSYS2 packages (MinGW gcc, clang, cmake, ninja, perl)..." -ForegroundColor Yellow
-$setupMsys2 = Join-Path $PSScriptRoot "windows\setup_msys2.sh"
-if (Test-Path $setupMsys2) {
-    $prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-    $setupMsys2Posix = (& "$msys2Root\usr\bin\cygpath.exe" -u $setupMsys2).Trim()
-    # MSYS2_PATH_TYPE must be in bash.exe's own environment (not inside the -lc
-    # string) so the login profile builds the inherited PATH; otherwise the
-    # host rustup is invisible to the script. The trailing 2>&1 inside bash
-    # keeps pacman/rustup stderr chatter from surfacing as PowerShell
-    # NativeCommandError records.
-    $env:MSYS2_PATH_TYPE = "inherit"
-    & $msys2Bash -lc "bash '$setupMsys2Posix' 2>&1" | Out-Host
-    $setupExit = $LASTEXITCODE
-    Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
-    if ($setupExit -ne 0) {
-        Write-Host "  [WARN] setup_msys2.sh reported errors. Re-run it later from PowerShell:" -ForegroundColor Yellow
-        Write-Host "         `$env:MSYS2_PATH_TYPE='inherit'; & '$msys2Bash' -lc `"bash '$setupMsys2Posix'`"" -ForegroundColor Yellow
-    } else {
-        Write-Host "  MSYS2 provisioning complete." -ForegroundColor Green
-    }
-    $ErrorActionPreference = $prevEAP
-} else {
-    Write-Host "  [WARN] scripts/windows/setup_msys2.sh not found (running standalone before cloning?)." -ForegroundColor Yellow
-    Write-Host "         After cloning the repo, run it from an MSYS2 shell." -ForegroundColor Yellow
-}
-
+rustup target add x86_64-pc-windows-msvc --toolchain 1.90.0
 # --- 7. Go ---
-Write-Host "[7/9] Installing Go..." -ForegroundColor Yellow
+Write-Host "[6/8] Installing Go..." -ForegroundColor Yellow
 $goInstalled = Get-Command go -ErrorAction SilentlyContinue
 if (-not $goInstalled) {
     winget install GoLang.Go --accept-source-agreements --accept-package-agreements 2>$null
@@ -316,7 +257,7 @@ if (-not $goInstalled) {
 Refresh-Path
 
 # --- 8. CMake, Ninja ---
-Write-Host "[8/9] Installing CMake and Ninja..." -ForegroundColor Yellow
+Write-Host "[7/8] Installing CMake and Ninja..." -ForegroundColor Yellow
 winget install Kitware.CMake --accept-source-agreements --accept-package-agreements 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Host "  CMake already installed or install skipped." -ForegroundColor Yellow }
 winget install -e --id Ninja-build.Ninja --accept-source-agreements --accept-package-agreements 2>$null
@@ -324,7 +265,7 @@ if ($LASTEXITCODE -ne 0) { Write-Host "  Ninja already installed or install skip
 Refresh-Path
 
 # --- 9. Meson ---
-Write-Host "[9/9] Installing Meson..." -ForegroundColor Yellow
+Write-Host "[8/8] Installing Meson..." -ForegroundColor Yellow
 $mesonInstalled = Get-Command meson -ErrorAction SilentlyContinue
 if (-not $mesonInstalled) {
     python -m pip install --upgrade pip
@@ -342,17 +283,6 @@ Write-Host "=== Verification ===" -ForegroundColor Cyan
 $allOk = $true
 
 Write-Host "  Developer Mode: $(if ((Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock" -Name "AllowDevelopmentWithoutDevLicense" -ErrorAction SilentlyContinue).AllowDevelopmentWithoutDevLicense -eq 1) { "ON" } else { "CHECK" })"
-$prevEAP = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-$mingwGccOk = $false
-if (Test-Path $msys2Bash) {
-    # Absolute path: a plain login shell defaults to the MSYS subsystem, which
-    # does not have /mingw64/bin on PATH.
-    & $msys2Bash -lc "/mingw64/bin/x86_64-w64-mingw32-gcc --version 2>&1" | Out-Null
-    $mingwGccOk = ($LASTEXITCODE -eq 0)
-}
-$ErrorActionPreference = $prevEAP
-Write-Host "  MSYS2 MinGW gcc: $(if ($mingwGccOk) { "OK" } else { "NOT FOUND (run scripts/windows/setup_msys2.sh)" })"
-
 function Test-Tool {
     param([string]$name, [string]$cmd)
     $found = Get-Command $cmd -ErrorAction SilentlyContinue
@@ -404,11 +334,6 @@ if ($allOk) {
     Write-Host "`n=== Some tools missing. Open a fresh terminal (or reboot) and run again, or install missing tools manually. ===" -ForegroundColor Yellow
 }
 
-Write-Host ""
-Write-Host "If MSYS2 provisioning was skipped above (e.g. repo not yet cloned), run it once:" -ForegroundColor Cyan
-Write-Host "  `$env:MSYS2_PATH_TYPE='inherit'; & C:\msys64\usr\bin\bash.exe -lc `"bash '/c/path/to/stack_wallet/scripts/windows/setup_msys2.sh'`""
-Write-Host ""
 Write-Host "Then build from Git Bash (not PowerShell/cmd; make targets need a POSIX shell):" -ForegroundColor Cyan
 Write-Host "  cd /c/path/to/stack_wallet"
 Write-Host "  make build-windows VERSION=x.y.z BUILD_NUM=nnn"
-Write-Host "  # (MSYS2 installed elsewhere? add MSYS2_ROOT=D:/msys64)"

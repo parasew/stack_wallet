@@ -36,12 +36,6 @@ RUSTC_WRAPPER         ?= $(if $(filter 1,$(SCCACHE)),$(shell command -v sccache 
 SCCACHE_DIR           ?= $(APP_PROJECT_ROOT_DIR)/.sccache-cache
 SCCACHE_CACHE_SIZE    ?= 10G
 SKIP_NATIVE                  ?= 0
-# MSYS2 (native Windows plugin builds). Override MSYS2_ROOT for non-default installs.
-MSYS2_ROOT   ?= C:/msys64
-MSYS2_BASH   ?= $(MSYS2_ROOT)/usr/bin/bash.exe
-MSYS2_RUN     = MSYSTEM=MINGW64 MSYS2_PATH_TYPE=inherit CHERE_INVOKED=1 "$(MSYS2_BASH)" -l -c
-# C compiler for the cgo build of mwebd.exe (see tool/build_standalone_mwebd_windows.dart).
-MWEBD_CC     ?= $(MSYS2_ROOT)/mingw64/bin/gcc.exe
 # download-windows fetches the prebuilt mwebd.exe by default (MWEBD_FETCH=0 to build from source).
 MWEBD_FETCH  ?= 1
 MACOS_ENV_UNSET = -u LD -u LDFLAGS -u NIX_LDFLAGS -u NIX_CFLAGS_LINK \
@@ -59,7 +53,7 @@ export SCCACHE_DIR
 export SCCACHE_CACHE_SIZE
 endif
 
-.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-msys2 check-sdk-macos bootstrap-macos bootstrap-xcode macos-local-state init clean prebuild-unix prebuild-windows deps-linux patch-submodules \
+.PHONY: help check-reqs check-reqs-macos check-reqs-windows check-sdk-macos bootstrap-macos bootstrap-xcode macos-local-state clean prebuild-unix prebuild-windows deps-linux \
 	build-linux build-macos build-ios build-android build-windows download-windows patch-xelis-windows patch-flutter-mwebd-windows \
 	macos-prepare macos-configure macos-restore-metadata macos-build-app diagnose-env-macos \
 	test-mwc
@@ -167,29 +161,19 @@ check-reqs-windows: ## Verify Windows host build requirements
 	@echo "Checking Windows prerequisites..."
 	@command -v flutter >/dev/null 2>&1 || { echo >&2 "[ERROR] Flutter not installed. Run 'scripts/install_windows_build_tools.ps1'."; exit 1; }
 	@command -v dart >/dev/null 2>&1 || { echo >&2 "[ERROR] Dart not installed."; exit 1; }
-	@rustup run 1.89.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.89.0 toolchain not installed."; exit 1; }
-	@rustup run 1.89.0 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-msvc" || { echo >&2 "[ERROR] x86_64-pc-windows-msvc target not added to Rust 1.89.0. Run: rustup target add x86_64-pc-windows-msvc --toolchain 1.89.0"; exit 1; }
+	@rustup run 1.90.0 rustc -vV >/dev/null 2>&1 || { echo >&2 "[ERROR] Rust 1.90.0 toolchain not installed."; exit 1; }
+	@rustup run 1.90.0 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-msvc" || { echo >&2 "[ERROR] x86_64-pc-windows-msvc target not added to Rust 1.90.0. Run: rustup target add x86_64-pc-windows-msvc --toolchain 1.90.0"; exit 1; }
 	@command -v go >/dev/null 2>&1 || { echo >&2 "[ERROR] Go not installed."; exit 1; }
 	@command -v cmake >/dev/null 2>&1 || { echo >&2 "[ERROR] CMake not installed."; exit 1; }
 	@command -v ninja >/dev/null 2>&1 || { echo >&2 "[ERROR] Ninja not installed."; exit 1; }
 	@echo "[OK] Windows host requirements found!"
 
-check-msys2: ## Verify MSYS2/MinGW environment (needed to build the windows-gnu plugins from source)
-	@echo "Checking MSYS2 prerequisites..."
-	@[ -x "$(MSYS2_BASH)" ] || { echo >&2 "[ERROR] MSYS2 not found at $(MSYS2_BASH). Install with 'winget install MSYS2.MSYS2', then run scripts/windows/setup_msys2.sh. For non-default installs, pass MSYS2_ROOT=<path>."; exit 1; }
-	@$(MSYS2_RUN) "command -v x86_64-w64-mingw32-gcc >/dev/null" || { echo >&2 "[ERROR] MinGW-w64 gcc missing in MSYS2. Run scripts/windows/setup_msys2.sh."; exit 1; }
-	@rustup run 1.89.0 rustup target list --installed 2>/dev/null | grep -q "x86_64-pc-windows-gnu" || { echo >&2 "[ERROR] x86_64-pc-windows-gnu target not added to Rust 1.89.0. Run: rustup target add x86_64-pc-windows-gnu --toolchain 1.89.0"; exit 1; }
-	@echo "[OK] MSYS2 requirements found!"
-
 # --- MAINTENANCE ---
-
-init: ## Initialize all submodules
-	@git submodule update --init --recursive
 
 clean: ## Remove artifacts and fix permissions
 	@echo "Cleaning Flutter and Rust artifacts..."
-	@chflags -R nouchg crypto_plugins/ build/ macos/ 2>/dev/null || true
-	@chmod -R u+w crypto_plugins/ build/ macos/ 2>/dev/null || true
+	@chflags -R nouchg build/ macos/ 2>/dev/null || true
+	@chmod -R u+w build/ macos/ 2>/dev/null || true
 	@if [ -f pubspec.yaml ]; then $(FLUTTER) clean; fi
 	@if [ -f "Cargo.toml" ]; then cargo clean; fi
 	@rm -rf macos/Pods macos/Podfile.lock ios/Pods ios/Podfile.lock build/
@@ -198,37 +182,10 @@ clean: ## Remove artifacts and fix permissions
 	@echo "Cleaning sccache..."
 	@sccache --zero-stats 2>/dev/null || true
 	@rm -rf $(SCCACHE_DIR)
-	@echo "Cleaning submodule target folders..."
-	@find crypto_plugins/ -type d \( -name "target" -o -name "build" \) -exec rm -rf {} + 2>/dev/null || true
 	@echo "Cleaning local pub cache residues..."
 	@chmod -R u+w $(PUB_CACHE)/git/ 2>/dev/null || true
 	@find $(PUB_CACHE)/git/ -type d \( -name "build" -o -name "target" \) -path "*flutter_lib*" -exec rm -rf {} + 2>/dev/null || true
 	@echo "[OK] Project is now in a pristine state."
-
-patch-submodules: ## Apply portability patches to submodules
-	@echo "Patching submodules for portability..."
-	@chmod -R u+w crypto_plugins/ 2>/dev/null || true
-	@rm -rf crypto_plugins/*/scripts/macos/build
-	@# NOTE: avoid brittle cross-platform in-place sed rewrites for build_all.sh files here.
-	@# Platform-specific script patching is handled explicitly in build targets via scripts/patches/*.
-	@echo "Fixing Epic Cash header logic..."
-	@sed -i.bak 's|cp target/epic_cash_wallet.h libepic_cash_wallet.h|mkdir -p target \&\& touch target/epic_cash_wallet.h \&\& cp target/epic_cash_wallet.h libepic_cash_wallet.h|g' crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh 2>/dev/null || true
-	@sed -i.bak 's|cbindgen --config cbindgen.toml --crate epic-cash-wallet --output target/epic_cash_wallet.h|cbindgen --config cbindgen.toml --crate epic-cash-wallet --output target/epic_cash_wallet.h \&\& cp target/epic_cash_wallet.h libepic_cash_wallet.h|g' crypto_plugins/flutter_libepiccash/scripts/macos/build_all.sh 2>/dev/null || true
-	@echo "Fixing Frostdart binary path..."
-	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec perl -0777 -i.bak -pe 's|^.*dart\s+build_|dart build_|mg' {} + 2>/dev/null || true
-	@# Frostdart scripts pin a specific toolchain (+1.71.0 today, +1.89.0 on newer branches); strip any pin, use default toolchain (MSRV is 1.70)
-	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/cargo +[0-9.][0-9.]* build/cargo build/g' {} + 2>/dev/null || true
-	@find crypto_plugins/frostdart/scripts -name "build_all.sh" -exec sed -i.bak 's/rustup +[0-9.][0-9.]* target add/rustup target add/g' {} + 2>/dev/null || true
-	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/cargo +[0-9.][0-9.]* build/cargo build/g' {} + 2>/dev/null || true
-	@find crypto_plugins/frostdart/scripts -name "build_all.bat" -exec sed -i.bak 's/rustup +[0-9.][0-9.]* target add/rustup target add/g' {} + 2>/dev/null || true
-	@echo "Fixing frostdart ARM copy path in build_all.bat..."
-	@sed -i.bak '/if "%IS_ARM%"=="true" (/,/) else (/ s|..\\target\\x86_64-pc-windows-msvc\\release\\hrf_api.dll|..\\target\\aarch64-pc-windows-msvc\\release\\hrf_api.dll|' crypto_plugins/frostdart/scripts/windows/build_all.bat 2>/dev/null || true
-	@echo "Normalizing Linux script shebangs for NixOS..."
-	@find crypto_plugins -path "*/scripts/linux/*.sh" -type f -exec sed -i.bak '1s|^#!/bin/bash$$|#!/usr/bin/env bash|' {} + 2>/dev/null || true
-	@echo "Disabling strict Rust checks..."
-	@find crypto_plugins scripts -type f -name "rust_version.sh" -exec sed -i.bak 's/exit 1/echo "Bypassed by Nix"/g' {} + 2>/dev/null || true
-	@find crypto_plugins -name "*.bak" -delete 2>/dev/null || true
-	@echo "[OK] Submodules patched."
 
 # --- PLATFORM BUILDS ---
 
@@ -312,6 +269,8 @@ macos-restore-metadata:
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		$(FLUTTER) pub get
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
+		bash scripts/patches/xelis_1_85_1_compat.sh
+	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		bash scripts/macos/patch_coinlib_podspec.sh
 	@# Ensure generated build settings are single-line key/value entries for CocoaPods xcconfig parser.
 	@[ -f macos/Flutter/ephemeral/Flutter-Generated.xcconfig ] && \
@@ -380,14 +339,15 @@ diagnose-env-macos: ## Print macOS build env and tool resolution
 	@echo "NIX_LDFLAGS=$${NIX_LDFLAGS:-<unset>}"
 	@echo "NIX_CFLAGS_LINK=$${NIX_CFLAGS_LINK:-<unset>}"
 
-build-ios: check-reqs check-sdk-macos init ## Build iOS Release
+build-ios: check-reqs check-sdk-macos ## Build iOS Release
 	@echo "--- Configuring project..."
 	@cd scripts && ./build_app.sh -a $(APP_NAME) -p ios -v $(VERSION) -b $(BUILD_NUM) -f
 	@echo "--- Building app..."
 	@$(FLUTTER) pub get
+	@bash scripts/patches/xelis_1_85_1_compat.sh
 	@$(FLUTTER) build ios --release --no-codesign
 
-build-linux: check-reqs init patch-submodules ## Build Linux Release
+build-linux: check-reqs ## Build Linux Release through Flutter native-assets hooks
 	@echo "--- Running prebuild bootstrap..."
 	@cd scripts && bash prebuild.sh
 	@echo "--- Generating config..."
@@ -399,6 +359,7 @@ build-linux: check-reqs init patch-submodules ## Build Linux Release
 		printf 'const kChangeNowApiKey = "";\nconst kSimpleSwapApiKey = "";\nconst kNanswapApiKey = "";\nconst kNanoSwapRpcApiKey = "";\nconst kWizSwapApiKey = "";\n' > lib/external_api_keys.dart; \
 	fi
 	@$(FLUTTER) pub get
+	@bash scripts/patches/xelis_1_85_1_compat.sh
 	@mkdir -p scripts/linux/pc
 	@printf '%s\n' \
 		'prefix=$(CURDIR)/scripts/linux/build/libsecret' \
@@ -431,22 +392,24 @@ build-linux: check-reqs init patch-submodules ## Build Linux Release
 		PKG_CONFIG_LIBDIR="$(CURDIR)/scripts/linux/pc:$$SYSPROF_PC_DIR:$$PC_PATH" \
 		$(FLUTTER) build linux --release
 
-build-android: check-reqs init ## Build Android APK
+build-android: check-reqs ## Build Android APK
 	@echo "--- Configuring project..."
 	@cd scripts && ./build_app.sh -a $(APP_NAME) -p android -v $(VERSION) -b $(BUILD_NUM) -f
 	@echo "--- Building app..."
 	@$(FLUTTER) pub get
+	@bash scripts/patches/xelis_1_85_1_compat.sh
 	@$(FLUTTER) build apk --release
 
 prebuild-windows: ## Run Windows prebuild config (PowerShell)
 	@echo "--- Running Windows prebuild..."
 	@cd scripts && powershell -ExecutionPolicy Bypass -File prebuild.ps1
 
-patch-xelis-windows: ## Pre-fetch xelis git deps and patch xelis_common for Rust 1.89.0 (Windows host, run after 'flutter pub get')
+patch-xelis-windows: ## Pin and patch Xelis dependencies for Rust 1.90.0 (Windows host, run after 'flutter pub get')
+	@bash scripts/patches/xelis_1_85_1_compat.sh
 	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
 	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
 	if [ -n "$$XELIS_MANIFEST" ]; then \
-		rustup run 1.89.0 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
+		rustup run 1.90.0 cargo fetch --manifest-path "$$XELIS_MANIFEST" || true; \
 	else \
 		echo "[WARN] xelis-flutter-ffi not found in pub cache; xelis patch may be a no-op."; \
 	fi
@@ -456,23 +419,20 @@ patch-flutter-mwebd-windows: ## Strip windows ffiPlugin from cached flutter_mweb
 	@bash scripts/windows/patch_flutter_mwebd_pubspec.sh
 	@$(FLUTTER) pub get
 
-build-windows: check-reqs check-reqs-windows check-msys2 init patch-submodules prebuild-windows ## Build Windows Release
+build-windows: check-reqs check-reqs-windows prebuild-windows ## Build Windows Release through Flutter native-assets hooks
 	@echo "--- Configuring project..."
-	@cd scripts && MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i
-	@echo "--- Building MinGW plugins (libepiccash, libmwc) via MSYS2..."
-	@$(MSYS2_RUN) "cd '$(CURDIR)/scripts/windows' && bash build_msys2_plugins.sh"
+	@cd scripts && bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(MAKE) patch-flutter-mwebd-windows
 	@$(DART) run coinlib:build_windows
-	@cd crypto_plugins/frostdart/scripts/windows && env -u CC -u CXX -u AR -u RANLIB -u CFLAGS -u CPPFLAGS -u CXXFLAGS -u LDFLAGS -u IS_ARM cmd //c build_all.bat
 	@$(MAKE) patch-xelis-windows
 	@echo "--- Compiling app..."
 	@$(FLUTTER) build windows --release
 
-download-windows: check-reqs check-reqs-windows init patch-submodules prebuild-windows ## Download prebuilt DLLs & build (faster, no plugin compilation)
+download-windows: check-reqs check-reqs-windows prebuild-windows ## Download prebuilt native assets & build
 	@echo "--- Configuring project (download mode)..."
-	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d
+	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(MAKE) patch-flutter-mwebd-windows

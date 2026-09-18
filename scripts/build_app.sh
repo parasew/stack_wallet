@@ -78,16 +78,6 @@ if [ -z "$APP_NAMED_ID" ]; then
   usage
 fi
 
-# Windows native dependencies are orchestrated by the Makefile. The old
-# implicit platform cross-build path has been removed.
-if [ "$APP_BUILD_PLATFORM" = "windows" ] && \
-   [ "$BUILD_CRYPTO_PLUGINS" -eq 0 ] && \
-   [ "$DOWNLOAD_CRYPTO_PLUGINS" -eq 0 ]; then
-  echo "Windows builds must select native-build or download mode." >&2
-  echo "Run 'make build-windows' (source build) or 'make download-windows'." >&2
-  exit 1
-fi
-
 # Keep macOS stack_wallet builds on the Makefile path so setup steps stay in one place.
 if [ "$APP_BUILD_PLATFORM" = "macos" ] && [ "$APP_NAMED_ID" = "stack_wallet" ]; then
   exec make -C "${APP_PROJECT_ROOT_DIR}" build-macos VERSION="${APP_VERSION_STRING}" BUILD_NUM="${APP_BUILD_NUMBER}"

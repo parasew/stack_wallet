@@ -14,7 +14,7 @@ Here you will find instructions on how to install the necessary tools for buildi
 The following instructions are for building and running on a Linux host.  Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.  This entire section (except for the Android Studio section) needs to be completed in WSL if building on a Windows host.
 
 ### Flutter
-Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk).  Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.47.2 or later by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk). Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Android Studio
 Install Android Studio.  Follow instructions here [https://developer.android.com/studio/install#linux](https://developer.android.com/studio/install#linux) or install via snap:
@@ -51,8 +51,8 @@ Install [Rust](https://www.rust-lang.org/tools/install) via [rustup.rs](https://
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc
-rustup install 1.89.0 1.85.1 1.81.0
-rustup default 1.89.0
+rustup install 1.90.0
+rustup default 1.90.0
 cargo install cargo-ndk
 ```
 
@@ -69,16 +69,15 @@ pip3 install --upgrade meson==0.64.1 markdown==3.4.1 markupsafe==2.1.1 jinja2==3
 ```
 
 ### Flutter
-Install Flutter 3.38.5 by [following their guide](https://docs.flutter.dev/install/manual).
+Install Flutter 3.47.2 or later by [following their guide](https://docs.flutter.dev/install/manual).
 
 Run `flutter doctor` in a terminal to confirm its installation.
 
-### Clone the repository and initialize submodules
-After installing the prerequisites listed above, download the code and init the submodules
+### Clone the repository
+After installing the prerequisites listed above, download the code:
 ```
 git clone https://github.com/cypherstack/stack_wallet.git
 cd stack_wallet
-git submodule foreach 'git fetch --tags' && git submodule update --init --recursive
 ```
 
 Build the secure storage dependencies in order to target Linux (not needed for Windows or other platforms):
@@ -197,7 +196,7 @@ Download and install [Homebrew](https://brew.sh/).  The following command can in
 
 After installing Homebrew, install the following packages:
 ```
-brew install autoconf automake boost berkeley-db ca-certificates cbindgen cmake cocoapods curl git libssh2 libsodium make openssl@1.1 openssl@3 perl pkg-config rustup-init unbound unzip xz zmq
+brew install autoconf automake boost berkeley-db ca-certificates cmake cocoapods curl git libssh2 libsodium make openssl@1.1 openssl@3 perl pkg-config rustup-init unbound unzip xz zmq
 ```
 
 The following brew formula *may* be needed:
@@ -206,21 +205,20 @@ brew install brotli cairo coreutils gdbm gettext glib gmp libevent libidn2 libng
 ```
 <!-- TODO: determine which of the above list are not needed at all. -->
 
-Download and install [Rust](https://www.rust-lang.org/tools/install).  [Rustup](https://rustup.rs/) is recommended for Rust setup.  Use `rustc` to confirm successful installation.  Install toolchains 1.81.0, 1.85.1, and 1.89.0 as well as `cbindgen` and `cargo-lipo` too.  You will also have to add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin`.  You can use the command(s):
+Download and install [Rust](https://www.rust-lang.org/tools/install). [Rustup](https://rustup.rs/) is recommended for setup. Use Rust 1.90.0 and add the platform target(s) `aarch64-apple-ios` and/or `aarch64-apple-darwin` as needed:
 ```
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.bashrc 
-rustup install 1.89.0 1.85.1 1.81.0
-rustup default 1.89.0
+rustup install 1.90.0
+rustup default 1.90.0
 cargo install cargo-ndk
-cargo install cbindgen cargo-lipo
-rustup target add aarch64-apple-ios aarch64-apple-darwin
+rustup target add aarch64-apple-ios aarch64-apple-darwin --toolchain 1.90.0
 ```
 
 Optionally download [Android Studio](https://developer.android.com/studio) as an IDE and activate its Dart and Flutter plugins.  VS Code may work as an alternative, but this is not recommended.
 
 ### Flutter
-Install 3.38.5 on your Mac host by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.47.2 or later on your Mac host by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Build plugins and configure
 #### Building plugins for iOS 
@@ -300,13 +298,14 @@ If the DLL was built on the WSL filesystem instead of on Windows, copy `stack_wa
 Frostdart will be built by the Windows host later.
 
 ### Install Flutter on Windows host
-Install Flutter 3.38.5 on your Windows host (not in WSL2) by [following their guide](https://docs.flutter.dev/install/manual).  Run `flutter doctor` in PowerShell to confirm its installation.
+Install Flutter 3.47.2 or later on your Windows host (not in WSL2) by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in PowerShell to confirm its installation.
 
 ### Rust
 Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host (not in WSL2).  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions:
 ```
-rustup install 1.89.0 1.85.1 1.81.0
-rustup default 1.89.0
+rustup install 1.90.0
+rustup default 1.90.0
+rustup target add x86_64-pc-windows-msvc --toolchain 1.90.0
 cargo install cargo-ndk
 ```
 

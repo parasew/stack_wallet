@@ -90,7 +90,6 @@
             # ==========================================
             ${lib.optionalString pkgs.stdenv.isLinux ''
             # echo "🐧 Linux detected: Patching shebangs for NixOS..."
-            # patchShebangs scripts/ crypto_plugins/ > /dev/null 2>&1 || true
               export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
               export BINDGEN_EXTRA_CLANG_ARGS="-isystem ${pkgs.llvmPackages.libclang.lib}/lib/clang/${pkgs.llvmPackages.clang.version}/include"
               export PROTOC="${pkgs.protobuf}/bin/protoc"
