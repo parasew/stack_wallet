@@ -376,7 +376,8 @@ build-linux: check-reqs ## Build Linux Release through Flutter native-assets hoo
 		'Cflags: -I$${includedir} -I$${includedir}/_build' \
 		> scripts/linux/pc/libsecret-1.pc
 	@if command -v podman >/dev/null 2>&1 || command -v docker >/dev/null 2>&1; then \
-		$(FLUTTER) pub run coinlib:build_linux; \
+		: 'coinlib BuildKit git fetch fails on NixOS; scope the legacy-builder workaround here'; \
+		DOCKER_BUILDKIT=0 $(FLUTTER) pub run coinlib:build_linux; \
 	else \
 		echo "[WARN] podman/docker not found; skipping coinlib:build_linux"; \
 	fi
@@ -392,7 +393,7 @@ build-linux: check-reqs ## Build Linux Release through Flutter native-assets hoo
 		PKG_CONFIG_DISABLE_UNINSTALLED=1 \
 		PKG_CONFIG_PATH= \
 		PKG_CONFIG_LIBDIR="$(CURDIR)/scripts/linux/pc:$$SYSPROF_PC_DIR:$$PC_PATH" \
-		$(FLUTTER) build linux --release
+		PROTOC="$(PROTOC_PATH)" $(FLUTTER) build linux --release
 
 build-android: check-reqs ## Build Android APK
 	@echo "--- Configuring project..."
