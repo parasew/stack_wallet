@@ -101,11 +101,11 @@ Future<void> _buildFromSource(Directory projectToolDir) async {
   );
   final Process build;
   if (Platform.isWindows) {
-    // Native build. cgo needs a C compiler: use MWEBD_CC when provided (the
-    // Makefile passes the MSYS2 MinGW gcc), otherwise fall back to whatever
-    // `gcc` is on PATH (e.g. GitHub CI runners). GOARCH is pinned to amd64 so
-    // an ARM64-native Go toolchain (Windows on ARM) still produces the x64
-    // mwebd.exe that matches the x64 MinGW compiler and app bundle.
+    // cgo needs a MinGW-compatible C compiler for this optional source-build
+    // path. MWEBD_CC may point to one; otherwise use `gcc` from PATH. Normal
+    // Windows builds fetch the verified release binary instead. GOARCH is
+    // pinned to amd64 so an ARM64-native Go toolchain still produces the x64
+    // mwebd.exe bundled by the app.
     final cc = Platform.environment["MWEBD_CC"];
     final ccDir = cc != null && cc.isNotEmpty ? File(cc).parent.path : null;
     final pathKey = Platform.environment.keys.firstWhere(

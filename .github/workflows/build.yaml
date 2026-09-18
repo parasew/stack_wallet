@@ -1384,7 +1384,6 @@ jobs:
           rustup toolchain install 1.90.0
           rustup default 1.90.0
           rustup target add aarch64-apple-darwin --toolchain 1.90.0
-          cargo install cargo-lipo
 
       - name: Configure app
         run: |

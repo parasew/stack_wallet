@@ -80,9 +80,9 @@
                rustup target add aarch64-apple-darwin aarch64-apple-ios --toolchain 1.90.0
              fi
 
-            if ! command -v cbindgen >/dev/null 2>&1 || ! command -v cargo-lipo >/dev/null 2>&1; then
-              echo "Installing required Cargo tools..."
-              cargo install cargo-ndk cbindgen cargo-lipo
+            if ! command -v cargo-ndk >/dev/null 2>&1; then
+              echo "Installing optional Android Cargo tooling..."
+              cargo install cargo-ndk
             fi
 
             # ==========================================

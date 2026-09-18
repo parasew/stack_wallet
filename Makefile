@@ -36,8 +36,10 @@ RUSTC_WRAPPER         ?= $(if $(filter 1,$(SCCACHE)),$(shell command -v sccache 
 SCCACHE_DIR           ?= $(APP_PROJECT_ROOT_DIR)/.sccache-cache
 SCCACHE_CACHE_SIZE    ?= 10G
 SKIP_NATIVE                  ?= 0
-# download-windows fetches the prebuilt mwebd.exe by default (MWEBD_FETCH=0 to build from source).
+# Windows builds fetch the verified prebuilt mwebd.exe by default. Set
+# MWEBD_FETCH=0 and MWEBD_CC=<MinGW-compatible compiler> to build it from source.
 MWEBD_FETCH  ?= 1
+MWEBD_CC     ?=
 MACOS_ENV_UNSET = -u LD -u LDFLAGS -u NIX_LDFLAGS -u NIX_CFLAGS_LINK \
 	-u CFLAGS -u CXXFLAGS -u CPPFLAGS \
 	-u SDKROOT -u BINDGEN_EXTRA_CLANG_ARGS \
@@ -421,7 +423,7 @@ patch-flutter-mwebd-windows: ## Strip windows ffiPlugin from cached flutter_mweb
 
 build-windows: check-reqs check-reqs-windows prebuild-windows ## Build Windows Release through Flutter native-assets hooks
 	@echo "--- Configuring project..."
-	@cd scripts && bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i
+	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -i
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(MAKE) patch-flutter-mwebd-windows
@@ -432,7 +434,7 @@ build-windows: check-reqs check-reqs-windows prebuild-windows ## Build Windows R
 
 download-windows: check-reqs check-reqs-windows prebuild-windows ## Download prebuilt native assets & build
 	@echo "--- Configuring project (download mode)..."
-	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d
+	@cd scripts && MWEBD_FETCH="$(MWEBD_FETCH)" MWEBD_CC="$(MWEBD_CC)" bash build_app.sh -a $(APP_NAME) -p windows -v $(VERSION) -b $(BUILD_NUM) -d
 	@echo "--- Building host native dependencies..."
 	@$(FLUTTER) pub get
 	@$(MAKE) patch-flutter-mwebd-windows

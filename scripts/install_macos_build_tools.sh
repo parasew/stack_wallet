@@ -88,9 +88,6 @@ if ! command -v cargo >/dev/null 2>&1; then
   die "cargo still not on PATH after rustup setup. Run 'rustup-init -y' manually, then re-run this script."
 fi
 
-# cargo-lipo is unmaintained and only needed for fat iOS builds: warn, don't fail.
-cargo install cargo-lipo || echo "[WARN] cargo-lipo install failed (only needed for iOS lipo builds)."
-
 echo "Verifying toolchain..."
 if command -v flutter >/dev/null 2>&1; then
   flutter --version

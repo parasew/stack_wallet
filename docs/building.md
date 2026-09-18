@@ -309,6 +309,8 @@ rustup target add x86_64-pc-windows-msvc --toolchain 1.90.0
 cargo install cargo-ndk
 ```
 
+Windows builds fetch the verified `mwebd.exe` release by default, so MSYS2 is not required. To build `mwebd.exe` from source instead, pass `MWEBD_FETCH=0` and `MWEBD_CC=<path-to-a-MinGW-compatible-gcc>` to `make build-windows`.
+
 ### Windows SDK and Developer Mode
 Install the Windows SDK: https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/  You may need to install the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads/sdk-archive/), which can be installed [by Visual Studio](https://stackoverflow.com/a/73923899) (`Tools > Get Tools and Features... > Modify > Individual Components > Windows 10 SDK`).
 
