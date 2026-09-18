@@ -113,11 +113,14 @@ The `build_app.sh` script is used to build the Stack Wallet and its family of ap
 
 Options:
 
- - `a <app>`: Specify the application ID (required).  Valid options are `stack_wallet` or `stack_duo`.
+ - `a <app>`: Specify the application ID (required). Valid options are `stack_wallet`, `stack_duo`, or `campfire`.
  - `b <build_number>`: Specify the build number in 123 (required).
  - `p <platform>`: Specify the platform to build for (required).  Valid options are `android`, `ios`, `macos`, `linux`, or `windows`.
  - `v <version>`: Specify the version of the application in 1.2.3 format (required).
- - `i`: Optional flag to skip building crypto plugins.  Useful for updating `pubspec.yaml` and white-labelling different apps with the same plugins.
+ - `i`: Optional flag to skip platform-native dependency builds (secure-storage dependencies and secp256k1). Useful when only updating configuration or white-labelling.
+ - `d`: Optional flag to use verified prebuilt native assets where supported instead of compiling them from source.
+ - `f`: Optional flag to build Isar from source.
+ - `s`: Optional flag to use system secure-storage dependencies.
 
 For example,
 ```
