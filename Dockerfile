@@ -85,7 +85,7 @@ RUN curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz 
 ENV FLUTTER_HOME=/opt/flutter \
     PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:$PATH
 
-RUN git clone --depth 1 --branch 3.47.2 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
+RUN git clone --depth 1 --branch 3.47.4 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
  && git config --global --add safe.directory '*' \
  && flutter config --no-analytics \
  && flutter precache --linux --android \
@@ -173,7 +173,7 @@ RUN curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz 
 ENV FLUTTER_HOME=/opt/flutter \
     PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:$PATH
 
-RUN git clone --depth 1 --branch 3.47.2 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
+RUN git clone --depth 1 --branch 3.47.4 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
  && git config --global --add safe.directory '*' \
  && flutter config --no-analytics \
  && flutter precache --android \
@@ -221,7 +221,7 @@ RUN curl -fsSL https://go.dev/dl/go1.24.13.linux-amd64.tar.gz -o /tmp/go.tar.gz 
 ENV FLUTTER_HOME=/opt/flutter \
     PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:$PATH
 
-RUN git clone --depth 1 --branch 3.47.2 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
+RUN git clone --depth 1 --branch 3.47.4 https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
  && git config --global --add safe.directory '*' \
  && flutter config --no-analytics \
  && flutter precache --linux \

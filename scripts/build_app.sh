@@ -140,13 +140,5 @@ if [ "$SKIP_NATIVE_DEPS_BUILD" -eq 0 ]; then
             ./build_secp256k1.sh
             popd
             ;;
-        windows)
-            # WSL cross-compile of secp256k1.dll. CI builds it natively instead.
-            if [ "$DOWNLOAD_CRYPTO_PLUGINS" -eq 0 ]; then
-                pushd "${APP_PROJECT_ROOT_DIR}/scripts/windows"
-                ./build_secp256k1_wsl.sh
-                popd
-            fi
-            ;;
     esac
 fi

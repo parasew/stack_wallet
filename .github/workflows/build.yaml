@@ -78,7 +78,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -144,7 +144,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -233,7 +233,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -276,7 +276,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -326,7 +326,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -345,7 +345,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -397,7 +397,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -416,7 +416,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -481,7 +481,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -547,7 +547,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -730,7 +730,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -819,7 +819,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -859,7 +859,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -909,7 +909,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -933,7 +933,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -985,7 +985,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -1011,7 +1011,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -1193,7 +1193,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -1282,7 +1282,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -1322,7 +1322,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -1372,7 +1372,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -1397,7 +1397,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:
@@ -1449,7 +1449,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.4'
           channel: 'stable'
 
       - uses: actions/setup-go@v6
@@ -1475,7 +1475,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:

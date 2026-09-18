@@ -43,7 +43,7 @@ jobs:
         run: flutter pub get
 
       - name: Pin Xelis native-assets to Rust 1.90
-        run: bash scripts/patches/xelis_1_85_1_compat.sh
+        run: bash scripts/patches/xelis_rust_1_90_compat.sh
 
       - name: Decode secrets
         env:

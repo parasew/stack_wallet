@@ -9,7 +9,32 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-source "$SCRIPT_DIR/targets.sh"
+
+# The active benchmark path is bench.sh -> compare.py -> render.sh. Keep this
+# collector self-contained so it can snapshot the native-assets layout without
+# relying on the retired targets.sh configuration.
+BUILD_DIRS=(
+  .dart_tool
+  build
+  .pub-cache
+  .cargo-target
+  .sccache-cache
+)
+ARTIFACT_DIRS=(
+  build/macos/Build/Products/Release
+  build/linux/x64/release/bundle
+  build/windows/x64/runner/Release
+  build/app/outputs/flutter-apk
+)
+
+detect_platform() {
+  case "$(uname -s)" in
+    Darwin) echo "macos" ;;
+    Linux) echo "linux" ;;
+    MINGW*|MSYS*|CYGWIN*) echo "windows" ;;
+    *) echo "unknown" ;;
+  esac
+}
 
 OUTDIR="${BM_OUTDIR:-$REPO_ROOT/bm/results}"
 BASELINE="${BM_BASELINE:-current}"
@@ -39,7 +64,7 @@ main() {
   } > "$csv"
 
   # Disk directories
-  for d in "${DISK_DIRS[@]}"; do
+  for d in "${BUILD_DIRS[@]}"; do
     local path="$REPO_ROOT/$d"
     local label="disk_$(echo "$d" | tr '/.' '_')"
     if [ -d "$path" ] || [ -f "$path" ]; then
@@ -52,9 +77,9 @@ main() {
   done
 
   # Artifacts
-  for a in "${ARTIFACTS[@]}"; do
+  for a in "${ARTIFACT_DIRS[@]}"; do
     local path="$REPO_ROOT/$a"
-    local label="artifact_$(basename "$a" | sed 's/\.[^.]*$//' | tr '.-' '_')"
+    local label="artifact_$(echo "$a" | tr '/.-' '_')"
     if [ -e "$path" ]; then
       local sz
       sz="$(du -sk "$path" 2>/dev/null | cut -f1 || echo 0)"
@@ -69,15 +94,15 @@ main() {
   total="$(du -sk "$REPO_ROOT" 2>/dev/null | cut -f1 || echo 0)"
   echo "${BASELINE},${PLATFORM},${HOSTNAME},${TIMESTAMP},total_project,${total}," >> "$csv"
 
-  # Rust target dirs aggregate
+  # Native-assets Rust target directories aggregate. Flutter's hooks keep
+  # these under .dart_tool instead of the deleted crypto_plugins tree.
   local rust_total=0
-  for d in crypto_plugins/*/target crypto_plugins/*/rust/target crypto_plugins/*/src/serai/target; do
-    if [ -d "$REPO_ROOT/$d" ]; then
-      local sz
-      sz="$(du -sk "$REPO_ROOT/$d" 2>/dev/null | cut -f1 || echo 0)"
-      rust_total=$((rust_total + sz))
-    fi
-  done
+  while IFS= read -r target_dir; do
+    local sz
+    sz="$(du -sk "$target_dir" 2>/dev/null | cut -f1 || echo 0)"
+    rust_total=$((rust_total + sz))
+  done < <(find "$REPO_ROOT/.dart_tool/hooks_runner/shared" \
+    -type d -path '*/build/*/target' 2>/dev/null)
   echo "${BASELINE},${PLATFORM},${HOSTNAME},${TIMESTAMP},rust_targets_aggregate,${rust_total}," >> "$csv"
 
   # Toolchain sizes

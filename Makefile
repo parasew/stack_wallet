@@ -271,7 +271,7 @@ macos-restore-metadata:
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		$(FLUTTER) pub get
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
-		bash scripts/patches/xelis_1_85_1_compat.sh
+		bash scripts/patches/xelis_rust_1_90_compat.sh
 	@env HOME="$(PROJECT_HOME)" XDG_CACHE_HOME="$(PROJECT_CACHE)" TMPDIR="$(PROJECT_TMP)" PUB_CACHE="$(PUB_CACHE)" \
 		bash scripts/macos/patch_coinlib_podspec.sh
 	@# Ensure generated build settings are single-line key/value entries for CocoaPods xcconfig parser.
@@ -346,7 +346,7 @@ build-ios: check-reqs check-sdk-macos ## Build iOS Release
 	@cd scripts && ./build_app.sh -a $(APP_NAME) -p ios -v $(VERSION) -b $(BUILD_NUM) -f
 	@echo "--- Building app..."
 	@$(FLUTTER) pub get
-	@bash scripts/patches/xelis_1_85_1_compat.sh
+	@bash scripts/patches/xelis_rust_1_90_compat.sh
 	@$(FLUTTER) build ios --release --no-codesign
 
 build-linux: check-reqs ## Build Linux Release through Flutter native-assets hooks
@@ -361,7 +361,7 @@ build-linux: check-reqs ## Build Linux Release through Flutter native-assets hoo
 		printf 'const kChangeNowApiKey = "";\nconst kSimpleSwapApiKey = "";\nconst kNanswapApiKey = "";\nconst kNanoSwapRpcApiKey = "";\nconst kWizSwapApiKey = "";\n' > lib/external_api_keys.dart; \
 	fi
 	@$(FLUTTER) pub get
-	@bash scripts/patches/xelis_1_85_1_compat.sh
+	@bash scripts/patches/xelis_rust_1_90_compat.sh
 	@mkdir -p scripts/linux/pc
 	@printf '%s\n' \
 		'prefix=$(CURDIR)/scripts/linux/build/libsecret' \
@@ -399,7 +399,7 @@ build-android: check-reqs ## Build Android APK
 	@cd scripts && ./build_app.sh -a $(APP_NAME) -p android -v $(VERSION) -b $(BUILD_NUM) -f
 	@echo "--- Building app..."
 	@$(FLUTTER) pub get
-	@bash scripts/patches/xelis_1_85_1_compat.sh
+	@bash scripts/patches/xelis_rust_1_90_compat.sh
 	@$(FLUTTER) build apk --release
 
 prebuild-windows: ## Run Windows prebuild config (PowerShell)
@@ -407,7 +407,7 @@ prebuild-windows: ## Run Windows prebuild config (PowerShell)
 	@cd scripts && powershell -ExecutionPolicy Bypass -File prebuild.ps1
 
 patch-xelis-windows: ## Pin and patch Xelis dependencies for Rust 1.90.0 (Windows host, run after 'flutter pub get')
-	@bash scripts/patches/xelis_1_85_1_compat.sh
+	@bash scripts/patches/xelis_rust_1_90_compat.sh
 	@echo "--- Pre-fetching xelis git deps so the checkout exists before the patch runs..."
 	@XELIS_MANIFEST="$$(find "$(PUB_CACHE)/git" "$$LOCALAPPDATA/Pub/Cache/git" "$$APPDATA/Pub/Cache/git" -path '*/xelis-flutter-ffi-*/rust/Cargo.toml' 2>/dev/null | head -1)"; \
 	if [ -n "$$XELIS_MANIFEST" ]; then \
@@ -415,7 +415,7 @@ patch-xelis-windows: ## Pin and patch Xelis dependencies for Rust 1.90.0 (Window
 	else \
 		echo "[WARN] xelis-flutter-ffi not found in pub cache; xelis patch may be a no-op."; \
 	fi
-	@bash scripts/patches/xelis_1_85_1_compat.sh
+	@bash scripts/patches/xelis_rust_1_90_compat.sh
 
 patch-flutter-mwebd-windows: ## Strip windows ffiPlugin from cached flutter_mwebd (Stack Wallet uses mwebd.exe instead)
 	@bash scripts/windows/patch_flutter_mwebd_pubspec.sh

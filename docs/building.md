@@ -4,17 +4,17 @@ Here you will find instructions on how to install the necessary tools for buildi
 
 ## Prerequisites
 
-- The only OS supported for building Android and Linux desktop is Ubuntu 24.04.  Windows builds require using Ubuntu 24.04 on WSL2.  macOS builds for itself and iOS.  Advanced users may also be able to build on other Debian-based distributions like Linux Mint.
+- The only OS supported for building Android and Linux desktop is Ubuntu 24.04. Windows builds use the native Windows toolchain. macOS builds for itself and iOS. Advanced users may also be able to build on other Debian-based distributions like Linux Mint.
 - Android setup ([Android Studio](https://developer.android.com/studio) and subsequent dependencies)
 - 100 GB of storage
 - Install go: [https://go.dev/doc/install](https://go.dev/doc/install)
 
 ## Linux host
 
-The following instructions are for building and running on a Linux host.  Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.  This entire section (except for the Android Studio section) needs to be completed in WSL if building on a Windows host.
+The following instructions are for building and running on a Linux host. Alternatively, see the [Mac](#mac-host) and/or [Windows](#windows-host) section.
 
 ### Flutter
-Install Flutter 3.47.2 or later by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk). Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.47.4 or later by [following their guide](https://docs.flutter.dev/get-started/install/linux/desktop?tab=download#install-the-flutter-sdk). Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Android Studio
 Install Android Studio.  Follow instructions here [https://developer.android.com/studio/install#linux](https://developer.android.com/studio/install#linux) or install via snap:
@@ -69,7 +69,7 @@ pip3 install --upgrade meson==0.64.1 markdown==3.4.1 markupsafe==2.1.1 jinja2==3
 ```
 
 ### Flutter
-Install Flutter 3.47.2 or later by [following their guide](https://docs.flutter.dev/install/manual).
+Install Flutter 3.47.4 or later by [following their guide](https://docs.flutter.dev/install/manual).
 
 Run `flutter doctor` in a terminal to confirm its installation.
 
@@ -91,9 +91,7 @@ cd ../..
 ### Build secp256k1
 Coinlib requires a secp256k1 library to be built prior to running Stack Wallet.  It can be built from within the root `stack_wallet` folder on a...
  - Linux host for Linux targets:  `dart run coinlib:build_linux` (requires [Docker](https://docs.docker.com/engine/install/ubuntu/) or [`podman`](https://podman.io/docs/installation))
- - Linux host for Windows targets: `dart run coinlib:build_windows_crosscompile`
  - Windows host: `dart run coinlib:build_windows`
- - WSL2 host: `dart run coinlib:build_wsl`
  - macOS host: `dart run coinlib:build_macos`
 
 or by using `scripts/linux/build_secp256k1.sh` or `scripts/windows/build_secp256k1.bat`.
@@ -137,32 +135,6 @@ cd scripts
 ```
 cd scripts
 ./build_app.sh -a stack_wallet -p linux
-```
-
-#### Building plugins and configure for Windows
-*This step is only necessary inside WSL2 for building on a Windows host.*
-
-Install dependencies like MXE:
-```
-cd scripts/windows
-./deps.sh
-```
-
-Upgrade the version of cmake >= 3.31.6, the default version of ubuntu 24.04 (3.28.1) will be too low to build libepiccash.
-You can use pip to install a specific version
-```
-sudo apt remove cmake
-pip install cmake==3.31.6
-```
-
-install go in WSL [https://go.dev/doc/install](https://go.dev/doc/install) (follow linux instructions) and ensure you have `mingw-w64` package installed to get the `x86_64-w64-mingw32-gcc` compiler.
-
-go version should be at least 1.24
-
-and use `scripts/build_app.sh` to build plugins: (see the [Build script section](#build-script-build_appsh) to understand the arguments)
-```
-cd ..
-./build_app.sh -a stack_wallet -p windows -v 2.4.4 -b 301
 ```
 
 ### Running
@@ -218,7 +190,7 @@ rustup target add aarch64-apple-ios aarch64-apple-darwin --toolchain 1.90.0
 Optionally download [Android Studio](https://developer.android.com/studio) as an IDE and activate its Dart and Flutter plugins.  VS Code may work as an alternative, but this is not recommended.
 
 ### Flutter
-Install Flutter 3.47.2 or later on your Mac host by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in a terminal to confirm its installation.
+Install Flutter 3.47.4 or later on your Mac host by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in a terminal to confirm its installation.
 
 ### Build plugins and configure
 #### Building plugins for iOS 
@@ -263,42 +235,8 @@ flutter run macos
 ### Visual Studio
 Visual Studio 2022 is required for Windows development with the Flutter SDK.  Download it at https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history and install the "Desktop development with C++", "Linux development with C++", and "Visual C++ build tools" workloads.  You may also need the Windows 10, 11, and/or Universal SDK workloads depending on your Windows version.
 
-### Build plugins in WSL2
-Set up Ubuntu 24.04 in WSL2.  Follow the entire Linux host section in the WSL2 Ubuntu 24.04 host to get set up to build.  The Android Studio section may be skipped in WSL (it's only needed on the Windows host).
-
-Install the following libraries:
-```
-sudo apt-get install libgtk2.0-dev nasm mingw-w64
-```
-
-The WSL2 host may optionally be navigated to the `stack_wallet` repository on the Windows host in order to build the plugins in-place and skip the next section in which you copy the `dll`s from WSL2 to Windows.
-
-In this case, you need to enable "metadata" in your wsl setup to be able to modify files on your Windows filesystem.
-Add this content to your /etc/wsl.conf in WSL.
-```
-[automount]
-options = "metadata"
-```
-Then restart the wsl from Windows
-```
-wsl --shutdown
-wsl
-```
-
-https://stackoverflow.com/questions/46610256/chmod-wsl-bash-doesnt-work/50856772#50856772
-
-Then build `secp256k1.dll` by running the following script on the WSL2 Ubuntu 24.04 host:
-
-- `stack_wallet/scripts/windows/build_secp256k1_wsl.sh`
-
-The crypto plugin libraries (epiccash, mwc, frostdart) are native-assets packages and are built by their build hooks during `flutter build`; they no longer need to be built here.
-
-If the DLL was built on the WSL filesystem instead of on Windows, copy `stack_wallet/build/secp256k1.dll` to the same position on the Windows host.
-
-Frostdart will be built by the Windows host later.
-
 ### Install Flutter on Windows host
-Install Flutter 3.47.2 or later on your Windows host (not in WSL2) by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in PowerShell to confirm its installation.
+Install Flutter 3.47.4 or later on your Windows host (not in WSL2) by [following their guide](https://docs.flutter.dev/install/manual). Run `flutter doctor` in PowerShell to confirm its installation.
 
 ### Rust
 Install [Rust](https://www.rust-lang.org/tools/install) on the Windows host (not in WSL2).  Download the installer from [rustup.rs](https://rustup.rs), make sure it works on the commandline (you may need to open a new terminal), and install the following versions:
