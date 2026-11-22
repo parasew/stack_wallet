@@ -1,0 +1,84 @@
+name: Make build
+
+# Temporary, fork-only workflow that checks the make/Nix contract on hosted runners:
+# Nix is installed on the runner and the build runs inside `nix develop`, with the
+# verified prebuilts (PREBUILTS=1). Windows has no Nix and uses the Git Bash path.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Without Nix the build must refuse
+        run: |
+          if make build-linux VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1; then echo "build must refuse without Nix" >&2; exit 1; fi
+      - name: Install Nix
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSfL https://nixos.org/nix/install | sh -s -- --daemon --yes
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+      - name: Build inside the Nix shell (prebuilts)
+        run: nix --extra-experimental-features 'nix-command flakes' develop --command make build-linux VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Without Nix the build must refuse
+        run: |
+          if make build-macos VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1; then echo "build must refuse without Nix" >&2; exit 1; fi
+      - name: Install Nix
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSfL https://nixos.org/nix/install | sh -s -- --daemon --yes
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+      - name: Build inside the Nix shell (prebuilts)
+        run: nix --extra-experimental-features 'nix-command flakes' develop --command make build-macos VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1
+
+  ios:
+    needs: macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install Nix
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSfL https://nixos.org/nix/install | sh -s -- --daemon --yes
+          echo "/nix/var/nix/profiles/default/bin" >> "$GITHUB_PATH"
+      - name: Build inside the Nix shell (prebuilts)
+        run: nix --extra-experimental-features 'nix-command flakes' develop --command make build-ios VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1
+
+  windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: 'stable'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.24.13
+      - name: Install the Rust toolchains
+        run: rustup toolchain install 1.99.1 1.90.0 --profile minimal --no-self-update
+      - name: Install make
+        run: command -v make >/dev/null 2>&1 || choco install make -y --no-progress
+      - name: Build (Git Bash, verified prebuilts, no Nix)
+        run: make build-windows VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1
