@@ -52,7 +52,7 @@ jobs:
       - name: Check the toolchain bill of materials
         run: make verify-bom
       - name: Build
-        run: make build-windows VERSION=0.0.0 BUILD_NUM=9999
+        run: make build-windows VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1
 
       - name: Verify the generated app BOM
         run: make verify-bom
@@ -89,7 +89,7 @@ jobs:
       - name: Check the toolchain bill of materials
         run: make verify-bom
       - name: Build
-        run: make build-macos VERSION=0.0.0 BUILD_NUM=9999 PREBUILTS=1
+        run: make build-macos VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1
 
       - name: Verify the generated app BOM
         run: make verify-bom
@@ -136,7 +136,7 @@ jobs:
       - name: Check the toolchain bill of materials
         run: make verify-bom
       - name: Build
-        run: make build-linux VERSION=0.0.0 BUILD_NUM=9999 PREBUILTS=1 SYSTEM_DEPS=1
+        run: make build-linux VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1 SYSTEM_DEPS=1
 
       - name: Verify the generated app BOM
         run: make verify-bom
@@ -177,7 +177,7 @@ jobs:
       - name: Check the toolchain bill of materials
         run: make verify-bom
       - name: Build
-        run: make build-ios VERSION=0.0.0 BUILD_NUM=9999 PREBUILTS=1
+        run: make build-ios VERSION=0.0.0 BUILD_NUM=9999 CONFIRM=1 PREBUILTS=1
 
       - name: Verify the generated app BOM
         run: make verify-bom
